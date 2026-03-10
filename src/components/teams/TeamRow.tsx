@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Star, Lock, Info } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
+import { BubbleheadStack } from '../ui/BubbleheadStack';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { JoinRequestModal } from './JoinRequestModal';
 import { LeaveConfirmDialog } from './LeaveConfirmDialog';
@@ -32,8 +33,6 @@ export function TeamRow({ team }: TeamRowProps) {
       ]
     : [];
 
-  const totalCount = team.membersCount + team.groupsCount;
-
   return (
     <>
       <div
@@ -52,22 +51,26 @@ export function TeamRow({ team }: TeamRowProps) {
           </div>
         </div>
 
-        {/* Users & Groups count */}
-        <div className="w-32 flex items-center gap-1 text-xs text-gray-600">
-          <span>{totalCount.toLocaleString()}</span>
+        {/* Members bubbleheads */}
+        <div className="w-32 flex items-center gap-1.5 flex-shrink-0">
+          <BubbleheadStack members={team.memberPreview} total={team.membersCount} />
           <div className="relative group/tooltip">
-            <Info size={11} className="text-gray-400 cursor-default" />
+            <Info size={10} className="text-gray-300 cursor-default" />
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10">
-              Users ({team.membersCount.toLocaleString()}) and Groups ({team.groupsCount})
+              {team.membersCount.toLocaleString()} users · {team.groupsCount} groups
             </div>
           </div>
         </div>
 
+        {/* Workspaces count */}
+        <div className="w-28 flex-shrink-0 text-xs text-gray-500">
+          {team.workspacesCount} workspaces
+        </div>
+
         {/* Actions */}
-        <div className="flex items-center gap-1.5 ml-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5 w-28 flex-shrink-0 justify-end" onClick={(e) => e.stopPropagation()}>
           {team.isMember ? (
             <>
-              {/* Star */}
               <button
                 onClick={handleToggleStar}
                 className={`p-1 rounded transition-colors ${
@@ -81,7 +84,7 @@ export function TeamRow({ team }: TeamRowProps) {
               <OverflowMenu items={overflowItems} />
             </>
           ) : isPending ? (
-            <button className="btn-secondary opacity-60 text-2xs px-2 py-1" disabled>
+            <button className="btn-secondary opacity-60 text-2xs px-2 py-1 cursor-default" disabled>
               Requested
             </button>
           ) : team.isOpen ? (

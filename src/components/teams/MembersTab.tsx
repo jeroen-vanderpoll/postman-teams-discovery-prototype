@@ -22,11 +22,10 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 interface MembersTabProps {
-  membersCount: number;
   isMember: boolean;
 }
 
-export function MembersTab({ membersCount, isMember }: MembersTabProps) {
+export function MembersTab({ isMember }: MembersTabProps) {
   const [search, setSearch] = useState('');
 
   const shown = ALL_MEMBERS.filter(
@@ -48,7 +47,6 @@ export function MembersTab({ membersCount, isMember }: MembersTabProps) {
             className="input-base pl-7 w-48"
           />
         </div>
-        <span className="text-xs text-gray-400 ml-auto">{membersCount.toLocaleString()} members</span>
       </div>
 
       {!isMember && (

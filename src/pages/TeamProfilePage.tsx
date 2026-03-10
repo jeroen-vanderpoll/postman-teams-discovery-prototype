@@ -39,7 +39,6 @@ export function TeamProfilePage() {
   }
 
   const isPending = pendingRequests.has(team.id);
-  const totalCount = team.membersCount + team.groupsCount;
 
   function handleJoin() {
     joinTeam(team!.id);
@@ -84,9 +83,6 @@ export function TeamProfilePage() {
             )}
           </div>
           <p className="text-xs text-gray-500 mb-1">{team.handle}</p>
-          <p className="text-xs text-gray-500">
-            {totalCount.toLocaleString()} members · {team.workspacesCount} workspaces
-          </p>
           {team.description && (
             <p className="text-xs text-gray-500 mt-1.5 max-w-lg">{team.description}</p>
           )}
@@ -146,19 +142,26 @@ export function TeamProfilePage() {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-4">
         <div className="flex gap-0">
-          {(['workspaces', 'members'] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 text-xs font-medium capitalize transition-colors -mb-px ${
-                activeTab === tab
-                  ? 'border-b-2 border-gray-900 text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          <button
+            onClick={() => setActiveTab('workspaces')}
+            className={`px-4 py-2 text-xs font-medium transition-colors -mb-px ${
+              activeTab === 'workspaces'
+                ? 'border-b-2 border-gray-900 text-gray-900'
+                : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
+            }`}
+          >
+            Workspaces ({team.workspacesCount})
+          </button>
+          <button
+            onClick={() => setActiveTab('members')}
+            className={`px-4 py-2 text-xs font-medium transition-colors -mb-px ${
+              activeTab === 'members'
+                ? 'border-b-2 border-gray-900 text-gray-900'
+                : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
+            }`}
+          >
+            Members ({team.membersCount.toLocaleString()})
+          </button>
         </div>
       </div>
 
@@ -172,7 +175,7 @@ export function TeamProfilePage() {
           <WorkspacesTab teamId={team.id} isMember={team.isMember} />
         )
       ) : (
-        <MembersTab membersCount={team.membersCount} isMember={team.isMember} />
+        <MembersTab isMember={team.isMember} />
       )}
 
       {showJoinModal && (
