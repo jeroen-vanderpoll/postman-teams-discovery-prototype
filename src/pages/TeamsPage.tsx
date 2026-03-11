@@ -241,7 +241,7 @@ export function TeamsPage() {
             <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
               Name <SortIcon col="name" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('members')} className="flex items-center w-52 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+            <button onClick={() => handleColSort('members')} className="flex items-center w-56 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
               Members <SortIcon col="members" active={listSortCol} dir={listSortDir} />
             </button>
             <button onClick={() => handleColSort('workspaces')} className="flex items-center w-16 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">

@@ -4,9 +4,10 @@ interface BubbleheadStackProps {
   members: MemberPreview[];
   total: number;
   size?: 'sm' | 'md';
+  showOverflow?: boolean;
 }
 
-export function BubbleheadStack({ members, total, size = 'sm' }: BubbleheadStackProps) {
+export function BubbleheadStack({ members, total, size = 'sm', showOverflow = true }: BubbleheadStackProps) {
   const shown = members.slice(0, 3);
   const extra = total - shown.length;
   const sizeClass = size === 'sm' ? 'w-5 h-5 text-2xs' : 'w-6 h-6 text-xs';
@@ -25,7 +26,7 @@ export function BubbleheadStack({ members, total, size = 'sm' }: BubbleheadStack
           </div>
         ))}
       </div>
-      {extra > 0 && (
+      {showOverflow && extra > 0 && (
         <span className="ml-1.5 text-2xs text-gray-500">+{extra}</span>
       )}
     </div>

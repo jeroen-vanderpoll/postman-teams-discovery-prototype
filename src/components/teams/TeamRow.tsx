@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock, LayoutGrid, Users } from 'lucide-react';
+import { Star, Lock, LayoutGrid } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { BubbleheadStack } from '../ui/BubbleheadStack';
 import { OverflowMenu } from '../ui/OverflowMenu';
@@ -14,8 +14,8 @@ interface TeamRowProps {
 }
 
 const ROLE_STYLES: Record<'member' | 'collaborator', string> = {
-  member: 'bg-gray-100 text-gray-600',
-  collaborator: 'bg-blue-50 text-blue-600',
+  member: 'text-gray-500',
+  collaborator: 'text-blue-500',
 };
 
 export function TeamRow({ team }: TeamRowProps) {
@@ -61,14 +61,11 @@ export function TeamRow({ team }: TeamRowProps) {
           </div>
         </div>
 
-        {/* Members col: bubbleheads + inline "X users · Y groups" */}
-        <div className="w-52 flex items-center gap-2 flex-shrink-0">
-          <BubbleheadStack members={team.memberPreview} total={team.membersCount} />
+        {/* Members col: 3 bubbleheads (no +N) + inline "1,080 users · 70 groups" */}
+        <div className="w-56 flex items-center gap-2 flex-shrink-0">
+          <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={false} />
           <span className="text-2xs text-gray-500 whitespace-nowrap">
-            <span className="inline-flex items-center gap-0.5">
-              <Users size={10} className="text-gray-400" />
-              <span>{team.membersCount.toLocaleString()}</span>
-            </span>
+            {team.membersCount.toLocaleString()} users
             {team.groupsCount > 0 && (
               <span className="text-gray-400"> · {team.groupsCount} groups</span>
             )}
@@ -81,10 +78,10 @@ export function TeamRow({ team }: TeamRowProps) {
           <span>{team.workspacesCount}</span>
         </div>
 
-        {/* Role col */}
+        {/* Role col — plain muted text */}
         <div className="w-28 flex-shrink-0">
           {team.memberRole && (
-            <span className={`inline-block px-1.5 py-0.5 rounded text-2xs font-medium capitalize ${ROLE_STYLES[team.memberRole]}`}>
+            <span className={`text-2xs font-medium capitalize ${ROLE_STYLES[team.memberRole]}`}>
               {team.memberRole}
             </span>
           )}
