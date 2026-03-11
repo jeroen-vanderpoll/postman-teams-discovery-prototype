@@ -48,7 +48,7 @@ export function TeamCard({ team }: TeamCardProps) {
     <>
       <div
         onClick={() => navigate(`/teams/${team.id}`)}
-        className="card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2"
+        className={`card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2 ${!team.isMember ? 'bg-gray-50' : ''}`}
       >
         {/* ── Top-right chrome ── */}
         <div
