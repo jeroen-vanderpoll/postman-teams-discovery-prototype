@@ -18,7 +18,7 @@ export function BubbleheadStack({ members, total, size = 'sm', showOverflow = tr
 
   return (
     <div className="flex items-center">
-      <div className="flex -space-x-1.5">
+      <div className="flex -space-x-1">
         {shown.map((m) => (
           <div
             key={m.id}

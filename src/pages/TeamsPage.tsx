@@ -269,7 +269,7 @@ export function TeamsPage() {
             </button>
             <div className="w-24" />
           </div>
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="divide-y divide-gray-100">
             {filtered.map((team) => <TeamRow key={team.id} team={team} />)}
           </div>
         </>

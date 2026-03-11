@@ -37,7 +37,7 @@ export function TeamRow({ team }: TeamRowProps) {
     <>
       <div
         onClick={() => navigate(`/teams/${team.id}`)}
-        className="flex items-center px-4 py-2 cursor-pointer group border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
+        className="flex items-center px-4 py-2 cursor-pointer group hover:bg-gray-50 transition-colors"
       >
         {/* Name col */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -51,10 +51,10 @@ export function TeamRow({ team }: TeamRowProps) {
           </div>
         </div>
 
-        {/* Members col: icon + count, then fixed-width avatar slot */}
-        <div className="w-56 flex items-center gap-2 flex-shrink-0">
-          <div className="relative group/members flex items-center gap-1">
-            <Users size={11} className="text-gray-400 flex-shrink-0" />
+        {/* Members col: fixed-width count slot + fixed-width avatar slot */}
+        <div className="w-56 flex items-center flex-shrink-0">
+          <div className="relative group/members flex items-center gap-1 w-20 flex-shrink-0">
+            <Users size={11} className="text-gray-500 flex-shrink-0" />
             <span className="text-xs text-gray-500 whitespace-nowrap cursor-default">
               {team.membersCount.toLocaleString()}
             </span>
@@ -64,7 +64,6 @@ export function TeamRow({ team }: TeamRowProps) {
               </div>
             )}
           </div>
-          {/* Fixed-width slot so avatars always start at the same x position */}
           <div className="w-14 flex-shrink-0">
             <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={true} />
           </div>
@@ -72,7 +71,7 @@ export function TeamRow({ team }: TeamRowProps) {
 
         {/* Workspaces col: icon + number */}
         <div className="w-28 flex items-center gap-1 flex-shrink-0 text-xs text-gray-500">
-          <LayoutGrid size={11} className="text-gray-400" />
+          <LayoutGrid size={11} className="text-gray-500" />
           <span>{team.workspacesCount}</span>
         </div>
 
