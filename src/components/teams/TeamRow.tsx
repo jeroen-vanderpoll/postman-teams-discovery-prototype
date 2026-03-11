@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock, LayoutGrid, Users } from 'lucide-react';
+import { Star, Lock } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
-import { BubbleheadStack } from '../ui/BubbleheadStack';
 import { OverflowMenu } from '../ui/OverflowMenu';
 import { JoinRequestModal } from './JoinRequestModal';
 import { LeaveConfirmDialog } from './LeaveConfirmDialog';
+import { MembersPopover, WorkspacesPopover } from './TeamPopovers';
 import { useTeamActions } from './useTeamActions';
+import { useWorkspacesStore } from '../../store/workspacesStore';
 import type { Team } from '../../types';
 
 interface TeamRowProps {
@@ -14,6 +15,7 @@ interface TeamRowProps {
 
 export function TeamRow({ team }: TeamRowProps) {
   const navigate = useNavigate();
+  const { workspaces } = useWorkspacesStore();
   const {
     isPending,
     showJoinModal,
@@ -33,13 +35,15 @@ export function TeamRow({ team }: TeamRowProps) {
       ]
     : [];
 
+  const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id);
+
   return (
     <>
       <div
         onClick={() => navigate(`/teams/${team.id}`)}
         className="flex items-center px-4 py-2 cursor-pointer group hover:bg-gray-50 transition-colors"
       >
-        {/* Name col */}
+        {/* Name col — flex-1 */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
           <div className="min-w-0 flex flex-col gap-0.5">
@@ -51,26 +55,28 @@ export function TeamRow({ team }: TeamRowProps) {
           </div>
         </div>
 
-        {/* Members col: fixed-width count slot + fixed-width avatar slot */}
-        <div className="w-56 flex items-center flex-shrink-0">
-          <div className="relative group/members flex items-center gap-1 w-44 flex-shrink-0">
-            <Users size={11} className="text-gray-500 flex-shrink-0" />
-            <span className="text-xs text-gray-500 whitespace-nowrap cursor-default">
-              {team.membersCount.toLocaleString()}{team.groupsCount > 0 ? ` · ${team.groupsCount} groups` : ''}
-            </span>
-          </div>
-          <div className="w-14 flex-shrink-0 hidden">
-            <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={true} />
-          </div>
+        {/* Members col — w-44, popover on click, tooltip on hover */}
+        <div className="w-44 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <MembersPopover
+            members={team.memberPreview}
+            total={team.membersCount}
+            groups={team.groupsCount}
+            onViewAll={() => navigate(`/teams/${team.id}?tab=members`)}
+            triggerClassName="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+          />
         </div>
 
-        {/* Workspaces col: icon + number */}
-        <div className="w-28 flex items-center gap-1 flex-shrink-0 text-xs text-gray-500">
-          <LayoutGrid size={11} className="text-gray-500" />
-          <span>{team.workspacesCount}</span>
+        {/* Workspaces col — w-36, popover on click, tooltip on hover */}
+        <div className="w-36 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <WorkspacesPopover
+            workspaces={teamWorkspaces}
+            total={team.workspacesCount}
+            onViewAll={() => navigate(`/teams/${team.id}?tab=workspaces`)}
+            triggerClassName="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+          />
         </div>
 
-        {/* Membership col */}
+        {/* Membership col — w-36 */}
         <div className="w-36 flex-shrink-0">
           {team.memberRole && (
             <span className="text-xs text-gray-500 capitalize">
@@ -79,7 +85,7 @@ export function TeamRow({ team }: TeamRowProps) {
           )}
         </div>
 
-        {/* Actions col */}
+        {/* Actions col — w-24 */}
         <div className="flex items-center gap-1.5 w-24 flex-shrink-0 justify-end" onClick={(e) => e.stopPropagation()}>
           {team.isMember ? (
             <>
