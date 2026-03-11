@@ -64,7 +64,7 @@ export function TeamRow({ team }: TeamRowProps) {
               </div>
             )}
           </div>
-          <div className="w-14 flex-shrink-0">
+          <div className="w-14 flex-shrink-0 hidden">
             <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={true} />
           </div>
         </div>
