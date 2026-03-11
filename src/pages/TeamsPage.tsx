@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp } from 'lucide-react';
+import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp, ArrowUpDown } from 'lucide-react';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
 import { TeamRow } from '../components/teams/TeamRow';
@@ -115,7 +115,6 @@ export function TeamsPage() {
   }, [teams, filter, sortMode, search, view, listSortCol, listSortDir]);
 
   const currentFilterLabel = FILTER_OPTIONS.find((o) => o.value === filter)?.label ?? 'All teams';
-  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? 'My teams first';
 
   return (
     <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
@@ -165,15 +164,18 @@ export function TeamsPage() {
           )}
         </div>
 
-        {/* Sort (grid only) */}
+        {/* Sort (grid only) — icon button with orange dot when non-default */}
         {view === 'grid' && (
           <div ref={sortRef} className="relative">
             <button
               onClick={() => setSortOpen(!sortOpen)}
-              className="flex items-center gap-1.5 border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-700 hover:border-gray-400 bg-white"
+              className="relative flex items-center justify-center w-7 h-7 border border-gray-300 rounded hover:border-gray-400 bg-white text-gray-600 hover:text-gray-800 transition-colors"
+              title="Sort"
             >
-              <span>{currentSortLabel}</span>
-              <ChevronDown size={11} className="text-gray-400" />
+              <ArrowUpDown size={13} />
+              {sortMode !== 'member-first' && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />
+              )}
             </button>
             {sortOpen && (
               <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
@@ -186,6 +188,17 @@ export function TeamsPage() {
                     {opt.label}
                   </button>
                 ))}
+                {sortMode !== 'member-first' && (
+                  <>
+                    <div className="border-t border-gray-100 my-1" />
+                    <button
+                      onClick={() => { setSortMode('member-first'); setSortOpen(false); }}
+                      className="w-full text-left px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-50 font-medium"
+                    >
+                      Reset sorting
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
