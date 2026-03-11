@@ -12,11 +12,6 @@ interface TeamRowProps {
   team: Team;
 }
 
-const ROLE_STYLES: Record<'member' | 'collaborator', string> = {
-  member: 'text-gray-500',
-  collaborator: 'text-gray-500',
-};
-
 export function TeamRow({ team }: TeamRowProps) {
   const navigate = useNavigate();
   const {
@@ -56,11 +51,11 @@ export function TeamRow({ team }: TeamRowProps) {
           </div>
         </div>
 
-        {/* Members col: icon + count first, then avatars; groups shown on hover */}
-        <div className="w-56 flex items-center gap-1.5 flex-shrink-0">
+        {/* Members col: icon + count, then fixed-width avatar slot */}
+        <div className="w-56 flex items-center gap-2 flex-shrink-0">
           <div className="relative group/members flex items-center gap-1">
             <Users size={11} className="text-gray-400 flex-shrink-0" />
-            <span className="text-2xs text-gray-500 whitespace-nowrap cursor-default">
+            <span className="text-xs text-gray-500 whitespace-nowrap cursor-default">
               {team.membersCount.toLocaleString()}
             </span>
             {team.groupsCount > 0 && (
@@ -69,8 +64,9 @@ export function TeamRow({ team }: TeamRowProps) {
               </div>
             )}
           </div>
-          <div className="ml-2">
-            <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={false} />
+          {/* Fixed-width slot so avatars always start at the same x position */}
+          <div className="w-14 flex-shrink-0">
+            <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={true} />
           </div>
         </div>
 
@@ -80,10 +76,10 @@ export function TeamRow({ team }: TeamRowProps) {
           <span>{team.workspacesCount}</span>
         </div>
 
-        {/* Membership col — plain muted text */}
+        {/* Membership col */}
         <div className="w-36 flex-shrink-0">
           {team.memberRole && (
-            <span className={`text-2xs font-medium capitalize ${ROLE_STYLES[team.memberRole]}`}>
+            <span className="text-xs text-gray-500 capitalize">
               {team.memberRole}
             </span>
           )}
