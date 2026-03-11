@@ -119,8 +119,7 @@ export function TeamProfilePage() {
             </button>
           ) : (
             <button className="btn-primary" onClick={() => setShowJoinModal(true)}>
-              Ask to join
-            </button>
+              Request to join            </button>
           )}
         </div>
       </div>
@@ -134,7 +133,7 @@ export function TeamProfilePage() {
             Send a request to join and a team admin will review it.
           </p>
           <button className="btn-primary" onClick={() => setShowJoinModal(true)}>
-            Ask to join
+            Request to join
           </button>
         </div>
       )}

@@ -37,14 +37,14 @@ export function TeamRow({ team }: TeamRowProps) {
     <>
       <div
         onClick={() => navigate(`/teams/${team.id}`)}
-        className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer group border-b border-gray-100 last:border-b-0"
+        className={`flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer group border-b border-gray-100 last:border-b-0 ${!team.isMember ? 'bg-gray-50/50' : ''}`}
       >
         {/* Name col */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <span className="text-xs font-semibold text-gray-900 truncate">{team.name}</span>
+              <span className={`text-xs font-semibold truncate ${team.isMember ? 'text-gray-900' : 'text-gray-600'}`}>{team.name}</span>
               {!team.isOpen && <Lock size={10} className="text-gray-400 flex-shrink-0" />}
             </div>
             <span className="text-2xs text-gray-400">{team.handle}</span>
@@ -94,7 +94,7 @@ export function TeamRow({ team }: TeamRowProps) {
               className="btn-secondary text-2xs px-2.5 py-1"
               onClick={() => setShowJoinModal(true)}
             >
-              Ask to join
+              Request to join
             </button>
           )}
         </div>

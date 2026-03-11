@@ -42,13 +42,24 @@ export function TeamCard({ team }: TeamCardProps) {
 
   const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id).slice(0, 8);
 
+  // Non-member cards get a slightly muted appearance
+  const cardBase = team.isMember
+    ? 'card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5'
+    : 'card px-3 pt-3 pb-3 cursor-pointer border-dashed hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5 bg-gray-50/60';
+
   return (
     <>
-      <div
-        onClick={() => navigate(`/teams/${team.id}`)}
-        className="card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5"
-      >
-        {/* ── Top-right actions (hidden until hover) ── */}
+      <div onClick={() => navigate(`/teams/${team.id}`)} className={cardBase}>
+
+        {/* ── Top-right: star always shows if starred; full controls on hover ── */}
+        {team.isMember && team.isStarred && (
+          <div className="absolute top-2.5 right-2.5 group-hover:opacity-0 transition-opacity pointer-events-none">
+            <div className="p-1 text-yellow-400 pointer-events-auto" onClick={(e) => { e.stopPropagation(); handleToggleStar(e); }}>
+              <Star size={12} fill="currentColor" />
+            </div>
+          </div>
+        )}
+
         <div
           className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={(e) => e.stopPropagation()}
@@ -58,9 +69,7 @@ export function TeamCard({ team }: TeamCardProps) {
               {overflowItems.length > 0 && <KebabMenu items={overflowItems} />}
               <button
                 onClick={handleToggleStar}
-                className={`p-1 rounded transition-colors ${
-                  team.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'
-                }`}
+                className={`p-1 rounded transition-colors ${team.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
               >
                 <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
               </button>
@@ -68,46 +77,34 @@ export function TeamCard({ team }: TeamCardProps) {
           ) : isPending ? (
             <span className="text-2xs text-gray-400 italic pr-0.5">Requested</span>
           ) : team.isOpen ? (
-            <button className="btn-secondary text-2xs px-2 py-0.5" onClick={handleJoin}>
-              Join
-            </button>
+            <button className="btn-secondary text-2xs px-2 py-0.5" onClick={handleJoin}>Join</button>
           ) : (
-            <button className="btn-secondary text-2xs px-2 py-0.5" onClick={() => setShowJoinModal(true)}>
-              Ask to join
-            </button>
+            <button className="btn-secondary text-2xs px-2 py-0.5" onClick={() => setShowJoinModal(true)}>Request to join</button>
           )}
         </div>
-
-        {/* Also keep star always visible if starred (outside the hover group so it persists) */}
-        {team.isMember && team.isStarred && (
-          <div
-            className="absolute top-2.5 right-2.5 flex items-center gap-0.5 group-hover:opacity-0 transition-opacity pointer-events-none"
-          >
-            <button
-              className="p-1 rounded text-yellow-400 pointer-events-auto"
-              onClick={(e) => { e.stopPropagation(); handleToggleStar(e); }}
-            >
-              <Star size={12} fill="currentColor" />
-            </button>
-          </div>
-        )}
 
         {/* ── Avatar + name + handle ── */}
         <div className="flex items-center gap-2 pr-10">
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{team.name}</p>
+              <p className={`text-xs font-semibold truncate leading-tight ${team.isMember ? 'text-gray-900' : 'text-gray-600'}`}>
+                {team.name}
+              </p>
               {!team.isOpen && <Lock size={9} className="text-gray-400 flex-shrink-0" />}
             </div>
             <p className="text-2xs text-gray-400 leading-tight truncate">{team.handle}</p>
           </div>
         </div>
 
-        {/* ── Metadata chips ── */}
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        {/* ── Metadata ── */}
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
           <MembersPopover members={team.memberPreview} total={team.membersCount} />
-          <WorkspacesPopover teamId={team.id} workspaces={teamWorkspaces} total={team.workspacesCount} onNavigate={() => navigate(`/teams/${team.id}`)} />
+          <WorkspacesPopover
+            workspaces={teamWorkspaces}
+            total={team.workspacesCount}
+            onNavigate={() => navigate(`/teams/${team.id}`)}
+          />
         </div>
       </div>
 
@@ -124,6 +121,7 @@ export function TeamCard({ team }: TeamCardProps) {
 // ── Members popover ──────────────────────────────────────────────────────────
 function MembersPopover({ members, total }: { members: MemberPreview[]; total: number }) {
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -138,11 +136,21 @@ function MembersPopover({ members, total }: { members: MemberPreview[]; total: n
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className="flex items-center gap-1 text-2xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 hover:border-gray-300 transition-colors bg-white"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors"
       >
-        <Users size={10} className="text-gray-400" />
-        <span>{total.toLocaleString()}</span>
+        <Users size={11} className="text-gray-500" />
+        <span className="font-medium">{total.toLocaleString()}</span>
       </button>
+
+      {/* Tooltip */}
+      {hovered && !open && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
+          {total.toLocaleString()} members
+        </div>
+      )}
+
       {open && (
         <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
           <p className="px-3 py-1.5 text-2xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-100">
@@ -163,7 +171,7 @@ function MembersPopover({ members, total }: { members: MemberPreview[]; total: n
           </div>
           {total > members.length && (
             <p className="px-3 py-1.5 text-2xs text-gray-400 border-t border-gray-100">
-              +{total - members.length} more
+              +{(total - members.length).toLocaleString()} more
             </p>
           )}
         </div>
@@ -174,17 +182,16 @@ function MembersPopover({ members, total }: { members: MemberPreview[]; total: n
 
 // ── Workspaces popover ───────────────────────────────────────────────────────
 function WorkspacesPopover({
-  teamId,
   workspaces,
   total,
   onNavigate,
 }: {
-  teamId: string;
   workspaces: { id: string; name: string; type: WorkspaceType }[];
   total: number;
   onNavigate: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -195,17 +202,25 @@ function WorkspacesPopover({
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  void teamId;
-
   return (
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className="flex items-center gap-1 text-2xs text-gray-500 hover:text-gray-800 border border-gray-200 rounded px-1.5 py-0.5 hover:border-gray-300 transition-colors bg-white"
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className="flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors"
       >
-        <LayoutGrid size={10} className="text-gray-400" />
-        <span>{total}</span>
+        <LayoutGrid size={11} className="text-gray-500" />
+        <span className="font-medium">{total}</span>
       </button>
+
+      {/* Tooltip */}
+      {hovered && !open && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
+          {total} workspaces
+        </div>
+      )}
+
       {open && (
         <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
           <p className="px-3 py-1.5 text-2xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-100">
