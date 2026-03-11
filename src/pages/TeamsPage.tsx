@@ -25,6 +25,7 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
 
 const DEFAULT_FILTER: FilterMode = 'all';
 const DEFAULT_SORT: SortMode = 'member-first';
+const VIEW_STORAGE_KEY = 'teams-view-mode';
 
 function sortTeams(teams: Team[], mode: SortMode): Team[] {
   const starred = teams.filter((t) => t.isStarred);
@@ -44,7 +45,14 @@ function sortTeams(teams: Team[], mode: SortMode): Team[] {
   return [...starred.sort(cmp), ...rest.sort(cmp)];
 }
 
-type SortCol = 'name' | 'members' | 'workspaces';
+// Membership sort order: member → collaborator → null
+function membershipRank(role: Team['memberRole']): number {
+  if (role === 'member') return 0;
+  if (role === 'collaborator') return 1;
+  return 2;
+}
+
+type SortCol = 'name' | 'members' | 'workspaces' | 'membership';
 type SortDir = 'asc' | 'desc';
 
 function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
@@ -59,7 +67,9 @@ export function TeamsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>(DEFAULT_FILTER);
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
-  const [view, setView] = useState<ViewMode>('grid');
+  const [view, setView] = useState<ViewMode>(
+    () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as ViewMode | null) ?? 'grid'
+  );
   const [controlsOpen, setControlsOpen] = useState(false);
 
   const [listSortCol, setListSortCol] = useState<SortCol>('name');
@@ -68,6 +78,12 @@ export function TeamsPage() {
   const controlsRef = useRef<HTMLDivElement>(null);
 
   const isCustomized = filter !== DEFAULT_FILTER || (view === 'grid' && sortMode !== DEFAULT_SORT);
+
+  // Persist view preference
+  function setViewAndPersist(v: ViewMode) {
+    setView(v);
+    sessionStorage.setItem(VIEW_STORAGE_KEY, v);
+  }
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -111,6 +127,7 @@ export function TeamsPage() {
         if (listSortCol === 'name') v = a.name.localeCompare(b.name);
         else if (listSortCol === 'members') v = a.membersCount - b.membersCount;
         else if (listSortCol === 'workspaces') v = a.workspacesCount - b.workspacesCount;
+        else if (listSortCol === 'membership') v = membershipRank(a.memberRole) - membershipRank(b.memberRole);
         return listSortDir === 'asc' ? v : -v;
       }
       return [...starred.sort(listCmp), ...rest.sort(listCmp)];
@@ -217,14 +234,14 @@ export function TeamsPage() {
         {/* View toggle */}
         <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
           <button
-            onClick={() => setView('grid')}
+            onClick={() => setViewAndPersist('grid')}
             className={`p-1.5 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             title="Grid view"
           >
             <LayoutGrid size={13} />
           </button>
           <button
-            onClick={() => setView('list')}
+            onClick={() => setViewAndPersist('list')}
             className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             title="List view"
           >
@@ -244,10 +261,12 @@ export function TeamsPage() {
             <button onClick={() => handleColSort('members')} className="flex items-center w-56 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
               Members <SortIcon col="members" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-16 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
-              <LayoutGrid size={11} className="mr-0.5" /><SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
+            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+              Workspaces <SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
             </button>
-            <div className="w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide">Role</div>
+            <button onClick={() => handleColSort('membership')} className="flex items-center w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+              Membership <SortIcon col="membership" active={listSortCol} dir={listSortDir} />
+            </button>
             <div className="w-24" />
           </div>
           <div className="border border-gray-200 rounded-lg overflow-hidden">

@@ -61,24 +61,28 @@ export function TeamRow({ team }: TeamRowProps) {
           </div>
         </div>
 
-        {/* Members col: 3 bubbleheads (no +N) + inline "1,080 users · 70 groups" */}
+        {/* Members col: 3 bubbleheads (no +N) + inline count; groups shown on hover */}
         <div className="w-56 flex items-center gap-2 flex-shrink-0">
           <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={false} />
-          <span className="text-2xs text-gray-500 whitespace-nowrap">
-            {team.membersCount.toLocaleString()} users
+          <div className="relative group/members">
+            <span className="text-2xs text-gray-500 whitespace-nowrap cursor-default">
+              {team.membersCount.toLocaleString()} users
+            </span>
             {team.groupsCount > 0 && (
-              <span className="text-gray-400"> · {team.groupsCount} groups</span>
+              <div className="absolute bottom-full left-0 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none opacity-0 group-hover/members:opacity-100 transition-opacity z-20">
+                {team.membersCount.toLocaleString()} users · {team.groupsCount} groups
+              </div>
             )}
-          </span>
+          </div>
         </div>
 
         {/* Workspaces col: icon + number */}
-        <div className="w-16 flex items-center gap-1 flex-shrink-0 text-xs text-gray-500">
+        <div className="w-28 flex items-center gap-1 flex-shrink-0 text-xs text-gray-500">
           <LayoutGrid size={11} className="text-gray-400" />
           <span>{team.workspacesCount}</span>
         </div>
 
-        {/* Role col — plain muted text */}
+        {/* Membership col — plain muted text */}
         <div className="w-28 flex-shrink-0">
           {team.memberRole && (
             <span className={`text-2xs font-medium capitalize ${ROLE_STYLES[team.memberRole]}`}>
