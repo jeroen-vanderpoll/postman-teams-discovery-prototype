@@ -53,16 +53,11 @@ export function TeamRow({ team }: TeamRowProps) {
 
         {/* Members col: fixed-width count slot + fixed-width avatar slot */}
         <div className="w-56 flex items-center flex-shrink-0">
-          <div className="relative group/members flex items-center gap-1 w-20 flex-shrink-0">
+          <div className="relative group/members flex items-center gap-1 w-44 flex-shrink-0">
             <Users size={11} className="text-gray-500 flex-shrink-0" />
             <span className="text-xs text-gray-500 whitespace-nowrap cursor-default">
-              {team.membersCount.toLocaleString()}
+              {team.membersCount.toLocaleString()}{team.groupsCount > 0 ? ` · ${team.groupsCount} groups` : ''}
             </span>
-            {team.groupsCount > 0 && (
-              <div className="absolute bottom-full left-0 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none opacity-0 group-hover/members:opacity-100 transition-opacity z-20">
-                {team.membersCount.toLocaleString()} users · {team.groupsCount} groups
-              </div>
-            )}
           </div>
           <div className="w-14 flex-shrink-0 hidden">
             <BubbleheadStack members={team.memberPreview} total={team.membersCount} showOverflow={true} />
