@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock, Info } from 'lucide-react';
+import { Star, Lock, LayoutGrid, Users } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { BubbleheadStack } from '../ui/BubbleheadStack';
 import { OverflowMenu } from '../ui/OverflowMenu';
@@ -11,6 +12,11 @@ import type { Team } from '../../types';
 interface TeamRowProps {
   team: Team;
 }
+
+const ROLE_STYLES: Record<'member' | 'collaborator', string> = {
+  member: 'bg-gray-100 text-gray-600',
+  collaborator: 'bg-blue-50 text-blue-600',
+};
 
 export function TeamRow({ team }: TeamRowProps) {
   const navigate = useNavigate();
@@ -33,42 +39,59 @@ export function TeamRow({ team }: TeamRowProps) {
       ]
     : [];
 
+  const isDiscovery = team.memberRole === null;
+
   return (
     <>
       <div
         onClick={() => navigate(`/teams/${team.id}`)}
-        className="flex items-center px-4 py-2 hover:bg-gray-50 cursor-pointer group border-b border-gray-100 last:border-b-0"
+        className={`flex items-center px-4 py-2 cursor-pointer group border-b border-gray-100 last:border-b-0 transition-colors ${
+          isDiscovery ? 'bg-gray-50 hover:bg-gray-100' : 'hover:bg-gray-50'
+        }`}
       >
         {/* Name col */}
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex flex-col gap-0.5">
             <div className="flex items-center gap-1">
               <span className="text-xs font-semibold text-gray-900 truncate">{team.name}</span>
               {!team.isOpen && <Lock size={10} className="text-gray-400 flex-shrink-0" />}
             </div>
-            <span className="text-2xs text-gray-400">{team.handle}</span>
+            <span className="text-2xs text-gray-400 leading-tight">{team.handle}</span>
           </div>
         </div>
 
-        {/* Members bubbleheads */}
-        <div className="w-32 flex items-center gap-1.5 flex-shrink-0">
+        {/* Members col: bubbleheads + inline "X users · Y groups" */}
+        <div className="w-52 flex items-center gap-2 flex-shrink-0">
           <BubbleheadStack members={team.memberPreview} total={team.membersCount} />
-          <div className="relative group/tooltip">
-            <Info size={10} className="text-gray-300 cursor-default" />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10">
-              {team.membersCount.toLocaleString()} users{team.groupsCount > 0 ? ` · ${team.groupsCount} groups` : ''}
-            </div>
-          </div>
+          <span className="text-2xs text-gray-500 whitespace-nowrap">
+            <span className="inline-flex items-center gap-0.5">
+              <Users size={10} className="text-gray-400" />
+              <span>{team.membersCount.toLocaleString()}</span>
+            </span>
+            {team.groupsCount > 0 && (
+              <span className="text-gray-400"> · {team.groupsCount} groups</span>
+            )}
+          </span>
         </div>
 
-        {/* Workspaces count */}
-        <div className="w-28 flex-shrink-0 text-xs text-gray-500">
-          {team.workspacesCount} workspaces
+        {/* Workspaces col: icon + number */}
+        <div className="w-16 flex items-center gap-1 flex-shrink-0 text-xs text-gray-500">
+          <LayoutGrid size={11} className="text-gray-400" />
+          <span>{team.workspacesCount}</span>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-1.5 w-28 flex-shrink-0 justify-end" onClick={(e) => e.stopPropagation()}>
+        {/* Role col */}
+        <div className="w-28 flex-shrink-0">
+          {team.memberRole && (
+            <span className={`inline-block px-1.5 py-0.5 rounded text-2xs font-medium capitalize ${ROLE_STYLES[team.memberRole]}`}>
+              {team.memberRole}
+            </span>
+          )}
+        </div>
+
+        {/* Actions col */}
+        <div className="flex items-center gap-1.5 w-24 flex-shrink-0 justify-end" onClick={(e) => e.stopPropagation()}>
           {team.isMember ? (
             <>
               <button
@@ -85,14 +108,10 @@ export function TeamRow({ team }: TeamRowProps) {
             </>
           ) : isPending ? (
             <span className="text-2xs text-gray-400 italic px-1">Requested</span>
-          ) : team.isOpen ? (
-            <button className="btn-secondary text-2xs px-2.5 py-1" onClick={handleJoin}>
-              Join
-            </button>
           ) : (
             <button
               className="btn-secondary text-2xs px-2.5 py-1"
-              onClick={() => setShowJoinModal(true)}
+              onClick={team.isOpen ? handleJoin : () => setShowJoinModal(true)}
             >
               Join
             </button>

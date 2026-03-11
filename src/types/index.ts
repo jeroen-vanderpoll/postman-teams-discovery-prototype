@@ -16,6 +16,7 @@ export interface Team {
   isOpen: boolean;
   isMember: boolean;
   isStarred: boolean;
+  memberRole: 'member' | 'collaborator' | null;
   membersCount: number;
   groupsCount: number;
   workspacesCount: number;

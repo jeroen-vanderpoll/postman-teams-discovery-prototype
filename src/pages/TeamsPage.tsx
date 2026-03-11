@@ -241,13 +241,14 @@ export function TeamsPage() {
             <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
               Name <SortIcon col="name" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('members')} className="flex items-center w-32 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+            <button onClick={() => handleColSort('members')} className="flex items-center w-52 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
               Members <SortIcon col="members" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
-              Workspaces <SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
+            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-16 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+              <LayoutGrid size={11} className="mr-0.5" /><SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
             </button>
-            <div className="w-32" />
+            <div className="w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide">Role</div>
+            <div className="w-24" />
           </div>
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             {filtered.map((team) => <TeamRow key={team.id} team={team} />)}
