@@ -39,6 +39,15 @@ function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: So
     : <ChevronDown size={11} className="text-gray-700 ml-0.5" />;
 }
 
+function SectionLabel({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+      <span className="text-2xs text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5 font-medium">{count}</span>
+    </div>
+  );
+}
+
 export function TeamsPage() {
   const { teams } = useTeamsStore();
   const [search, setSearch] = useState('');
@@ -68,20 +77,31 @@ export function TeamsPage() {
     }
   }
 
-  const filtered = useMemo(() => {
+  const { myTeams, otherTeams } = useMemo(() => {
     let result = teams;
-    if (filter === 'my-teams') result = result.filter((t) => t.isMember);
-    if (filter === 'not-member') result = result.filter((t) => !t.isMember);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
         (t) => t.name.toLowerCase().includes(q) || t.handle.toLowerCase().includes(q)
       );
     }
-    return sortTeams(result, sortCol, sortDir);
+
+    const sorted = sortTeams(result, sortCol, sortDir);
+
+    if (filter === 'my-teams') return { myTeams: sorted.filter((t) => t.isMember), otherTeams: [] };
+    if (filter === 'not-member') return { myTeams: [], otherTeams: sorted.filter((t) => !t.isMember) };
+
+    return {
+      myTeams: sorted.filter((t) => t.isMember),
+      otherTeams: sorted.filter((t) => !t.isMember),
+    };
   }, [teams, filter, sortCol, sortDir, search]);
 
   const currentFilterLabel = FILTER_OPTIONS.find((o) => o.value === filter)?.label ?? 'All teams';
+  const showSections = filter === 'all';
+  const allFiltered = [...myTeams, ...otherTeams];
+
+  const gridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3';
 
   return (
     <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
@@ -96,8 +116,7 @@ export function TeamsPage() {
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {/* Search */}
+      <div className="flex items-center gap-2 mb-5 flex-wrap">
         <div className="relative">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -108,7 +127,6 @@ export function TeamsPage() {
           />
         </div>
 
-        {/* Filter dropdown */}
         <div ref={filterRef} className="relative">
           <button
             onClick={() => setFilterOpen(!filterOpen)}
@@ -132,7 +150,6 @@ export function TeamsPage() {
           )}
         </div>
 
-        {/* View toggle */}
         <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
           <button
             onClick={() => setView('grid')}
@@ -151,47 +168,77 @@ export function TeamsPage() {
         </div>
       </div>
 
-      {/* List column headers with sort */}
-      {view === 'list' && filtered.length > 0 && (
-        <div className="flex items-center px-4 py-1.5 border-b border-gray-200">
-          <button
-            onClick={() => handleColSort('name')}
-            className="flex items-center flex-1 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700"
-          >
-            Name <SortIcon col="name" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleColSort('members')}
-            className="flex items-center w-32 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700"
-          >
-            Members <SortIcon col="members" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleColSort('workspaces')}
-            className="flex items-center w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700"
-          >
-            Workspaces <SortIcon col="workspaces" active={sortCol} dir={sortDir} />
-          </button>
-          {/* Actions column spacer */}
-          <div className="w-28" />
-        </div>
-      )}
-
-      {/* Results */}
-      {filtered.length === 0 ? (
+      {allFiltered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No teams found</div>
       ) : view === 'list' ? (
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          {filtered.map((team) => (
-            <TeamRow key={team.id} team={team} />
-          ))}
-        </div>
+        <>
+          {/* List column headers */}
+          <div className="flex items-center px-4 py-1.5 border-b border-gray-200 mb-0">
+            <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+              Name <SortIcon col="name" active={sortCol} dir={sortDir} />
+            </button>
+            <button onClick={() => handleColSort('members')} className="flex items-center w-32 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+              Members <SortIcon col="members" active={sortCol} dir={sortDir} />
+            </button>
+            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+              Workspaces <SortIcon col="workspaces" active={sortCol} dir={sortDir} />
+            </button>
+            <div className="w-32" />
+          </div>
+
+          {showSections && myTeams.length > 0 && otherTeams.length > 0 ? (
+            <>
+              {/* My teams section */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
+                {myTeams.map((team) => <TeamRow key={team.id} team={team} />)}
+              </div>
+              {/* Divider label */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 border-t border-gray-200" />
+                <span className="text-2xs text-gray-400 font-medium uppercase tracking-wide">Discover</span>
+                <div className="flex-1 border-t border-gray-200" />
+              </div>
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                {otherTeams.map((team) => <TeamRow key={team.id} team={team} />)}
+              </div>
+            </>
+          ) : (
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              {allFiltered.map((team) => <TeamRow key={team.id} team={team} />)}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filtered.map((team) => (
-            <TeamCard key={team.id} team={team} />
-          ))}
-        </div>
+        // Grid view
+        showSections && myTeams.length > 0 && otherTeams.length > 0 ? (
+          <>
+            {myTeams.length > 0 && (
+              <div className="mb-6">
+                <SectionLabel label="My teams" count={myTeams.length} />
+                <div className={gridClass}>
+                  {myTeams.map((team) => <TeamCard key={team.id} team={team} />)}
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 border-t border-gray-200" />
+              <span className="text-2xs text-gray-400 font-medium uppercase tracking-wide">Discover</span>
+              <div className="flex-1 border-t border-gray-200" />
+            </div>
+            {otherTeams.length > 0 && (
+              <div>
+                <SectionLabel label="Not a member" count={otherTeams.length} />
+                <div className={gridClass}>
+                  {otherTeams.map((team) => <TeamCard key={team.id} team={team} />)}
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className={gridClass}>
+            {allFiltered.map((team) => <TeamCard key={team.id} team={team} />)}
+          </div>
+        )
       )}
     </div>
   );

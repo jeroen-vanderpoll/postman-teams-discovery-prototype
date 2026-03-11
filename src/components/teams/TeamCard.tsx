@@ -42,10 +42,7 @@ export function TeamCard({ team }: TeamCardProps) {
 
   const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id).slice(0, 8);
 
-  // Non-member cards get a slightly muted appearance
-  const cardBase = team.isMember
-    ? 'card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5'
-    : 'card px-3 pt-3 pb-3 cursor-pointer border-dashed hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5 bg-gray-50/60';
+  const cardBase = 'card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5';
 
   return (
     <>
@@ -60,8 +57,11 @@ export function TeamCard({ team }: TeamCardProps) {
           </div>
         )}
 
+        {/* Member actions: hidden until hover. Non-member CTA: always visible */}
         <div
-          className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          className={`absolute top-2.5 right-2.5 flex items-center gap-0.5 transition-opacity ${
+            team.isMember ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
           {team.isMember ? (
@@ -88,7 +88,7 @@ export function TeamCard({ team }: TeamCardProps) {
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <p className={`text-xs font-semibold truncate leading-tight ${team.isMember ? 'text-gray-900' : 'text-gray-600'}`}>
+              <p className="text-xs font-semibold text-gray-900 truncate leading-tight">
                 {team.name}
               </p>
               {!team.isOpen && <Lock size={9} className="text-gray-400 flex-shrink-0" />}
