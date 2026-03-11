@@ -103,8 +103,8 @@ export function TeamCard({ team }: TeamCardProps) {
           </div>
         </div>
 
-        {/* ── Metadata chips ── */}
-        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+        {/* ── Metadata chips — indent to align with name/handle ── */}
+        <div className="flex items-center gap-3 pl-8" onClick={(e) => e.stopPropagation()}>
           <MembersPopover
             members={team.memberPreview}
             total={team.membersCount}
