@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock } from 'lucide-react';
+import { Star, Lock, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { BubbleheadStack } from '../ui/BubbleheadStack';
-import { OverflowMenu } from '../ui/OverflowMenu';
 import { JoinRequestModal } from './JoinRequestModal';
 import { LeaveConfirmDialog } from './LeaveConfirmDialog';
 import { useTeamActions } from './useTeamActions';
@@ -26,78 +25,70 @@ export function TeamCard({ team }: TeamCardProps) {
     handleToggleStar,
   } = useTeamActions(team);
 
-  function handleCardClick() {
-    navigate(`/teams/${team.id}`);
-  }
-
-  const overflowItems = team.isMember
-    ? [{ label: 'Leave team', onClick: () => setShowLeaveDialog(true), danger: true }]
-    : [];
+  const overflowItems = [
+    ...(team.isMember
+      ? [{ label: 'Leave team', onClick: () => setShowLeaveDialog(true), danger: true }]
+      : []),
+  ];
 
   return (
     <>
       <div
-        onClick={handleCardClick}
-        className="card p-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative"
+        onClick={() => navigate(`/teams/${team.id}`)}
+        className="card p-3 cursor-pointer hover:border-gray-300 hover:shadow-md transition-all group relative flex flex-col gap-2"
       >
-        {/* Star */}
-        {team.isMember && (
-          <button
-            onClick={handleToggleStar}
-            className={`absolute top-2 right-2 p-0.5 rounded transition-colors ${
-              team.isStarred ? 'text-yellow-400' : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
-            }`}
-          >
-            <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
-          </button>
-        )}
+        {/* Row 1: avatar + name + top-right actions */}
+        <div className="flex items-start gap-2">
+          <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
 
-        {/* Header */}
-        <div className="flex items-start gap-2 mb-2.5">
-          <Avatar initials={team.initials} color={team.avatarColor} size="md" />
-          <div className="min-w-0 flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1">
-              <p className="text-xs font-semibold text-gray-900 truncate">{team.name}</p>
-              {!team.isOpen && <Lock size={10} className="text-gray-400 flex-shrink-0" />}
+              <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{team.name}</p>
+              {!team.isOpen && <Lock size={9} className="text-gray-400 flex-shrink-0" />}
             </div>
-            <p className="text-2xs text-gray-500">{team.workspacesCount} workspaces</p>
+            <p className="text-2xs text-gray-400 leading-tight">{team.workspacesCount} workspaces</p>
+          </div>
+
+          {/* Top-right: star + kebab (member) or CTA (non-member) */}
+          <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            {team.isMember ? (
+              <>
+                <button
+                  onClick={handleToggleStar}
+                  className={`p-1 rounded transition-colors ${
+                    team.isStarred
+                      ? 'text-yellow-400'
+                      : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
+                  }`}
+                >
+                  <Star size={11} fill={team.isStarred ? 'currentColor' : 'none'} />
+                </button>
+                {overflowItems.length > 0 && (
+                  <KebabMenu items={overflowItems} />
+                )}
+              </>
+            ) : isPending ? (
+              <span className="text-2xs text-gray-400 italic">Requested</span>
+            ) : team.isOpen ? (
+              <button
+                className="btn-secondary text-2xs px-2 py-0.5"
+                onClick={handleJoin}
+              >
+                Join
+              </button>
+            ) : (
+              <button
+                className="btn-secondary text-2xs px-2 py-0.5"
+                onClick={() => setShowJoinModal(true)}
+              >
+                Ask to join
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Contributors */}
-        <div className="mb-3">
-          <BubbleheadStack
-            members={team.memberPreview}
-            total={team.membersCount}
-          />
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {team.isMember ? (
-            <>
-              <button
-                className="btn-secondary flex-1"
-                onClick={() => navigate(`/teams/${team.id}`)}
-              >
-                Open
-              </button>
-              {overflowItems.length > 0 && <OverflowMenu items={overflowItems} />}
-            </>
-          ) : isPending ? (
-            <button className="btn-secondary flex-1 opacity-60" disabled>
-              Request sent
-            </button>
-          ) : team.isOpen ? (
-            <button className="btn-primary flex-1" onClick={handleJoin}>
-              Join
-            </button>
-          ) : (
-            <button className="btn-primary flex-1" onClick={() => setShowJoinModal(true)}>
-              Ask to join
-            </button>
-          )}
-        </div>
+        {/* Row 2: bubbleheads */}
+        <BubbleheadStack members={team.memberPreview} total={team.membersCount} />
       </div>
 
       {showJoinModal && (
@@ -115,5 +106,45 @@ export function TeamCard({ team }: TeamCardProps) {
         />
       )}
     </>
+  );
+}
+
+// Inline kebab to avoid importing OverflowMenu (same logic, smaller trigger)
+import { useEffect, useRef, useState } from 'react';
+
+function KebabMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean }[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <MoreHorizontal size={13} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+          {items.map((item, i) => (
+            <button
+              key={i}
+              onClick={(e) => { e.stopPropagation(); item.onClick(); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${item.danger ? 'text-red-600' : 'text-gray-700'}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
