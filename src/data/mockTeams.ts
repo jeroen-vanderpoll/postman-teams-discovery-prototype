@@ -133,7 +133,7 @@ export const MOCK_TEAMS: Team[] = [
     isMember: true,
     isStarred: false,
     membersCount: 11,
-    groupsCount: 0,
+    groupsCount: 3,
     workspacesCount: 9,
     memberPreview: MEMBERS.slice(4, 7),
   },
@@ -235,8 +235,4 @@ export const MOCK_TEAMS: Team[] = [
     isMember: true,
     isStarred: false,
     membersCount: 6,
-    groupsCount: 0,
-    workspacesCount: 8,
-    memberPreview: MEMBERS.slice(2, 5),
-  },
-];
+    groupsCount: 2,

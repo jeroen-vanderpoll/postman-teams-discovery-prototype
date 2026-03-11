@@ -57,7 +57,7 @@ export function TeamRow({ team }: TeamRowProps) {
           <div className="relative group/tooltip">
             <Info size={10} className="text-gray-300 cursor-default" />
             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-10">
-              {team.membersCount.toLocaleString()} users · {team.groupsCount} groups
+              {team.membersCount.toLocaleString()} users{team.groupsCount > 0 ? ` · ${team.groupsCount} groups` : ''}
             </div>
           </div>
         </div>
@@ -94,7 +94,7 @@ export function TeamRow({ team }: TeamRowProps) {
               className="btn-secondary text-2xs px-2.5 py-1"
               onClick={() => setShowJoinModal(true)}
             >
-              Request to join
+              Join
             </button>
           )}
         </div>

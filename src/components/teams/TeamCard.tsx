@@ -108,6 +108,7 @@ export function TeamCard({ team }: TeamCardProps) {
           <MembersPopover
             members={team.memberPreview}
             total={team.membersCount}
+            groups={team.groupsCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=members`)}
           />
           <WorkspacesPopover
@@ -132,10 +133,12 @@ export function TeamCard({ team }: TeamCardProps) {
 function MembersPopover({
   members,
   total,
+  groups,
   onViewAll,
 }: {
   members: MemberPreview[];
   total: number;
+  groups: number;
   onViewAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -172,7 +175,7 @@ function MembersPopover({
 
       {hovered && !open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
-          {total.toLocaleString()} members
+          {total.toLocaleString()} users{groups > 0 ? ` · ${groups} groups` : ''}
         </div>
       )}
 
