@@ -50,38 +50,52 @@ export function TeamCard({ team }: TeamCardProps) {
         onClick={() => navigate(`/teams/${team.id}`)}
         className="card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2"
       >
-        {/* ── Top-right: star (always if starred); member controls on hover ── */}
-        {team.isMember && team.isStarred && (
-          <div className="absolute top-2.5 right-2.5 group-hover:opacity-0 transition-opacity">
+        {/* ── Top-right chrome ── */}
+        <div
+          className="absolute top-2.5 right-2.5 flex items-center gap-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {team.isMember ? (
+            /* Member: star (always if starred) + kebab on hover */
+            <>
+              {/* Starred state: always visible, fades when hover controls appear */}
+              {team.isStarred && (
+                <button
+                  onClick={handleToggleStar}
+                  className="p-1 text-yellow-400 group-hover:opacity-0 transition-opacity absolute right-0 top-0 pointer-events-none group-hover:pointer-events-none"
+                >
+                  <Star size={12} fill="currentColor" />
+                </button>
+              )}
+              {/* Hover controls */}
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                {overflowItems.length > 0 && <KebabMenu items={overflowItems} />}
+                <button
+                  onClick={handleToggleStar}
+                  className={`p-1 rounded transition-colors ${team.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+                >
+                  <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
+                </button>
+              </div>
+            </>
+          ) : isPending ? (
+            <span className="text-2xs text-gray-400 italic">Requested</span>
+          ) : (
+            /* Non-member: always show "Join" — modal handles closed teams */
             <button
-              className="p-1 text-yellow-400"
-              onClick={(e) => { e.stopPropagation(); handleToggleStar(e); }}
+              className="btn-secondary text-2xs px-2 py-0.5"
+              onClick={team.isOpen ? handleJoin : () => setShowJoinModal(true)}
             >
-              <Star size={12} fill="currentColor" />
+              Join
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {team.isMember && (
-          <div
-            className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {overflowItems.length > 0 && <KebabMenu items={overflowItems} />}
-            <button
-              onClick={handleToggleStar}
-              className={`p-1 rounded transition-colors ${team.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
-            >
-              <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
-            </button>
-          </div>
-        )}
-
-        {/* ── Avatar + name + handle ── */}
-        <div className="flex items-center gap-2 pr-10">
+        {/* ── Avatar + name (truncated) + handle ── */}
+        <div className="flex items-center gap-2 min-w-0 pr-14">
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-1">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1 min-w-0">
               <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{team.name}</p>
               {!team.isOpen && <Lock size={9} className="text-gray-400 flex-shrink-0" />}
             </div>
@@ -102,23 +116,6 @@ export function TeamCard({ team }: TeamCardProps) {
             onViewAll={() => navigate(`/teams/${team.id}?tab=workspaces`)}
           />
         </div>
-
-        {/* ── Bottom-right CTA (non-member only) ── */}
-        {!team.isMember && (
-          <div className="flex justify-end mt-0.5" onClick={(e) => e.stopPropagation()}>
-            {isPending ? (
-              <span className="text-2xs text-gray-400 italic py-0.5">Requested</span>
-            ) : team.isOpen ? (
-              <button className="btn-secondary text-2xs px-2.5 py-1" onClick={handleJoin}>
-                Join
-              </button>
-            ) : (
-              <button className="btn-secondary text-2xs px-2.5 py-1" onClick={() => setShowJoinModal(true)}>
-                Request to join
-              </button>
-            )}
-          </div>
-        )}
       </div>
 
       {showJoinModal && (
