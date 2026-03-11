@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp, ArrowUpDown } from 'lucide-react';
+import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp, ArrowUpDown, Check } from 'lucide-react';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
 import { TeamRow } from '../components/teams/TeamRow';
@@ -183,8 +183,11 @@ export function TeamsPage() {
                   <button
                     key={opt.value}
                     onClick={() => { setSortMode(opt.value); setSortOpen(false); }}
-                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${sortMode === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${sortMode === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
                   >
+                    <span className="w-3 flex-shrink-0">
+                      {sortMode === opt.value && <Check size={11} className="text-gray-700" />}
+                    </span>
                     {opt.label}
                   </button>
                 ))}
@@ -193,7 +196,7 @@ export function TeamsPage() {
                     <div className="border-t border-gray-100 my-1" />
                     <button
                       onClick={() => { setSortMode('member-first'); setSortOpen(false); }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-50 font-medium"
+                      className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium"
                     >
                       Reset sorting
                     </button>
