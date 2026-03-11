@@ -7,6 +7,7 @@ interface TeamsState {
   pendingRequests: Set<string>;
   joinTeam: (id: string) => void;
   requestToJoin: (id: string) => void;
+  withdrawRequest: (id: string) => void;
   leaveTeam: (id: string) => void;
   toggleStar: (id: string) => void;
 }
@@ -26,6 +27,13 @@ export const useTeamsStore = create<TeamsState>((set) => ({
     set((state) => ({
       pendingRequests: new Set([...state.pendingRequests, id]),
     })),
+
+  withdrawRequest: (id) =>
+    set((state) => {
+      const next = new Set(state.pendingRequests);
+      next.delete(id);
+      return { pendingRequests: next };
+    }),
 
   leaveTeam: (id) =>
     set((state) => ({

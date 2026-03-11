@@ -7,6 +7,7 @@ import { LeaveConfirmDialog } from './LeaveConfirmDialog';
 import { useTeamActions } from './useTeamActions';
 import { useWorkspacesStore } from '../../store/workspacesStore';
 import { MembersPopover, WorkspacesPopover, WORKSPACE_TYPE_ICONS } from './TeamPopovers';
+import { PendingButton } from './PendingButton';
 import type { Team } from '../../types';
 
 interface TeamCardProps {
@@ -28,6 +29,7 @@ export function TeamCard({ team }: TeamCardProps) {
     handleRequestSubmit,
     handleLeaveConfirm,
     handleToggleStar,
+    handleWithdrawRequest,
   } = useTeamActions(team);
 
   const overflowItems = team.isMember
@@ -74,7 +76,7 @@ export function TeamCard({ team }: TeamCardProps) {
               </div>
             </>
           ) : isPending ? (
-            <span className="text-2xs text-gray-400 italic">Requested</span>
+            <PendingButton onWithdraw={handleWithdrawRequest} size="xs" />
           ) : (
             /* Non-member: always show "Join" — modal handles closed teams */
             <button

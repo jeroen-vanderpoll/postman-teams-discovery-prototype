@@ -4,7 +4,7 @@ import { useToastStore } from '../../store/toastStore';
 import type { Team } from '../../types';
 
 export function useTeamActions(team: Team) {
-  const { joinTeam, requestToJoin, leaveTeam, toggleStar, pendingRequests } = useTeamsStore();
+  const { joinTeam, requestToJoin, withdrawRequest, leaveTeam, toggleStar, pendingRequests } = useTeamsStore();
   const { addToast } = useToastStore();
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
@@ -35,6 +35,11 @@ export function useTeamActions(team: Team) {
     toggleStar(team.id);
   }
 
+  function handleWithdrawRequest() {
+    withdrawRequest(team.id);
+    addToast(`Request withdrawn for ${team.name}`, 'info');
+  }
+
   return {
     isPending,
     showJoinModal,
@@ -45,5 +50,6 @@ export function useTeamActions(team: Team) {
     handleRequestSubmit,
     handleLeaveConfirm,
     handleToggleStar,
+    handleWithdrawRequest,
   };
 }

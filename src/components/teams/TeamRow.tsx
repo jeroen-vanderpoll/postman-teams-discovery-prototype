@@ -5,6 +5,7 @@ import { OverflowMenu } from '../ui/OverflowMenu';
 import { JoinRequestModal } from './JoinRequestModal';
 import { LeaveConfirmDialog } from './LeaveConfirmDialog';
 import { MembersPopover, WorkspacesPopover } from './TeamPopovers';
+import { PendingButton } from './PendingButton';
 import { useTeamActions } from './useTeamActions';
 import { useWorkspacesStore } from '../../store/workspacesStore';
 import type { Team } from '../../types';
@@ -26,6 +27,7 @@ export function TeamRow({ team }: TeamRowProps) {
     handleRequestSubmit,
     handleLeaveConfirm,
     handleToggleStar,
+    handleWithdrawRequest,
   } = useTeamActions(team);
 
   const overflowItems = team.isMember
@@ -102,7 +104,7 @@ export function TeamRow({ team }: TeamRowProps) {
               <OverflowMenu items={overflowItems} />
             </>
           ) : isPending ? (
-            <span className="text-2xs text-gray-400 italic px-1">Requested</span>
+            <PendingButton onWithdraw={handleWithdrawRequest} size="sm" />
           ) : (
             <button
               className="btn-secondary text-2xs px-2.5 py-1"
