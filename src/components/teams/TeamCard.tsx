@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock, MoreHorizontal, Users, LayoutGrid, Building2, Handshake, Globe, ChevronRight } from 'lucide-react';
+import { Star, Lock, MoreHorizontal, Users, LayoutGrid, Building2, Handshake, Globe, ChevronRight, Search } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { JoinRequestModal } from './JoinRequestModal';
 import { LeaveConfirmDialog } from './LeaveConfirmDialog';
@@ -17,6 +17,8 @@ const WORKSPACE_TYPE_ICONS: Record<WorkspaceType, { icon: React.ElementType; col
   partner:  { icon: Handshake,  color: 'text-purple-500' },
   public:   { icon: Globe,      color: 'text-green-500' },
 };
+
+const PAGE_SIZE = 8;
 
 export function TeamCard({ team }: TeamCardProps) {
   const navigate = useNavigate();
@@ -40,72 +42,83 @@ export function TeamCard({ team }: TeamCardProps) {
       ]
     : [];
 
-  const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id).slice(0, 8);
-
-  const cardBase = 'card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2.5';
+  const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id);
 
   return (
     <>
-      <div onClick={() => navigate(`/teams/${team.id}`)} className={cardBase}>
-
-        {/* ── Top-right: star always shows if starred; full controls on hover ── */}
+      <div
+        onClick={() => navigate(`/teams/${team.id}`)}
+        className="card px-3 pt-3 pb-3 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col gap-2"
+      >
+        {/* ── Top-right: star (always if starred); member controls on hover ── */}
         {team.isMember && team.isStarred && (
-          <div className="absolute top-2.5 right-2.5 group-hover:opacity-0 transition-opacity pointer-events-none">
-            <div className="p-1 text-yellow-400 pointer-events-auto" onClick={(e) => { e.stopPropagation(); handleToggleStar(e); }}>
+          <div className="absolute top-2.5 right-2.5 group-hover:opacity-0 transition-opacity">
+            <button
+              className="p-1 text-yellow-400"
+              onClick={(e) => { e.stopPropagation(); handleToggleStar(e); }}
+            >
               <Star size={12} fill="currentColor" />
-            </div>
+            </button>
           </div>
         )}
 
-        {/* Member actions: hidden until hover. Non-member CTA: always visible */}
-        <div
-          className={`absolute top-2.5 right-2.5 flex items-center gap-0.5 transition-opacity ${
-            team.isMember ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
-          }`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {team.isMember ? (
-            <>
-              {overflowItems.length > 0 && <KebabMenu items={overflowItems} />}
-              <button
-                onClick={handleToggleStar}
-                className={`p-1 rounded transition-colors ${team.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
-              >
-                <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
-              </button>
-            </>
-          ) : isPending ? (
-            <span className="text-2xs text-gray-400 italic pr-0.5">Requested</span>
-          ) : team.isOpen ? (
-            <button className="btn-secondary text-2xs px-2 py-0.5" onClick={handleJoin}>Join</button>
-          ) : (
-            <button className="btn-secondary text-2xs px-2 py-0.5" onClick={() => setShowJoinModal(true)}>Request to join</button>
-          )}
-        </div>
+        {team.isMember && (
+          <div
+            className="absolute top-2.5 right-2.5 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {overflowItems.length > 0 && <KebabMenu items={overflowItems} />}
+            <button
+              onClick={handleToggleStar}
+              className={`p-1 rounded transition-colors ${team.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+            >
+              <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
+            </button>
+          </div>
+        )}
 
         {/* ── Avatar + name + handle ── */}
         <div className="flex items-center gap-2 pr-10">
           <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <p className="text-xs font-semibold text-gray-900 truncate leading-tight">
-                {team.name}
-              </p>
+              <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{team.name}</p>
               {!team.isOpen && <Lock size={9} className="text-gray-400 flex-shrink-0" />}
             </div>
             <p className="text-2xs text-gray-400 leading-tight truncate">{team.handle}</p>
           </div>
         </div>
 
-        {/* ── Metadata ── */}
+        {/* ── Metadata chips ── */}
         <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-          <MembersPopover members={team.memberPreview} total={team.membersCount} />
+          <MembersPopover
+            members={team.memberPreview}
+            total={team.membersCount}
+            onViewAll={() => navigate(`/teams/${team.id}?tab=members`)}
+          />
           <WorkspacesPopover
             workspaces={teamWorkspaces}
             total={team.workspacesCount}
-            onNavigate={() => navigate(`/teams/${team.id}`)}
+            onViewAll={() => navigate(`/teams/${team.id}?tab=workspaces`)}
           />
         </div>
+
+        {/* ── Bottom-right CTA (non-member only) ── */}
+        {!team.isMember && (
+          <div className="flex justify-end mt-0.5" onClick={(e) => e.stopPropagation()}>
+            {isPending ? (
+              <span className="text-2xs text-gray-400 italic py-0.5">Requested</span>
+            ) : team.isOpen ? (
+              <button className="btn-secondary text-2xs px-2.5 py-1" onClick={handleJoin}>
+                Join
+              </button>
+            ) : (
+              <button className="btn-secondary text-2xs px-2.5 py-1" onClick={() => setShowJoinModal(true)}>
+                Request to join
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {showJoinModal && (
@@ -119,23 +132,39 @@ export function TeamCard({ team }: TeamCardProps) {
 }
 
 // ── Members popover ──────────────────────────────────────────────────────────
-function MembersPopover({ members, total }: { members: MemberPreview[]; total: number }) {
+function MembersPopover({
+  members,
+  total,
+  onViewAll,
+}: {
+  members: MemberPreview[];
+  total: number;
+  onViewAll: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [search, setSearch] = useState('');
+  const [shown, setShown] = useState(PAGE_SIZE);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch(''); setShown(PAGE_SIZE); }
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const filtered = search.trim()
+    ? members.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
+    : members;
+  const visible = filtered.slice(0, shown);
+  const hasMore = filtered.length > shown;
+
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); if (!open) { setSearch(''); setShown(PAGE_SIZE); } }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className="flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors"
@@ -144,7 +173,6 @@ function MembersPopover({ members, total }: { members: MemberPreview[]; total: n
         <span className="font-medium">{total.toLocaleString()}</span>
       </button>
 
-      {/* Tooltip */}
       {hovered && !open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
           {total.toLocaleString()} members
@@ -152,28 +180,58 @@ function MembersPopover({ members, total }: { members: MemberPreview[]; total: n
       )}
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
-          <p className="px-3 py-1.5 text-2xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-100">
-            Members ({total.toLocaleString()})
-          </p>
-          <div className="max-h-48 overflow-y-auto">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50">
-                <div
-                  className="w-5 h-5 rounded-full flex items-center justify-center text-2xs font-semibold text-white flex-shrink-0"
-                  style={{ backgroundColor: m.avatarColor }}
-                >
-                  {m.initials[0]}
-                </div>
-                <span className="text-xs text-gray-700 truncate">{m.name}</span>
-              </div>
-            ))}
+        <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50" onClick={(e) => e.stopPropagation()}>
+          {/* Search */}
+          <div className="px-2.5 py-2 border-b border-gray-100">
+            <div className="relative">
+              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setShown(PAGE_SIZE); }}
+                placeholder="Search members…"
+                className="w-full pl-6 pr-2 py-1 text-xs border border-gray-200 rounded bg-gray-50 outline-none focus:border-gray-400 focus:bg-white placeholder-gray-400"
+              />
+            </div>
           </div>
-          {total > members.length && (
-            <p className="px-3 py-1.5 text-2xs text-gray-400 border-t border-gray-100">
-              +{(total - members.length).toLocaleString()} more
-            </p>
-          )}
+
+          {/* List */}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {visible.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-gray-400 text-center">No results</p>
+            ) : (
+              visible.map((m) => (
+                <div key={m.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-2xs font-semibold text-white flex-shrink-0"
+                    style={{ backgroundColor: m.avatarColor }}
+                  >
+                    {m.initials[0]}
+                  </div>
+                  <span className="text-xs text-gray-700 truncate">{m.name}</span>
+                </div>
+              ))
+            )}
+            {hasMore && (
+              <button
+                onClick={() => setShown((s) => s + PAGE_SIZE)}
+                className="w-full px-3 py-1.5 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-left"
+              >
+                Load {Math.min(PAGE_SIZE, filtered.length - shown)} more…
+              </button>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-100">
+            <button
+              onClick={() => { setOpen(false); onViewAll(); }}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 font-medium"
+            >
+              <span>View all {total.toLocaleString()} members</span>
+              <ChevronRight size={12} />
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -184,28 +242,36 @@ function MembersPopover({ members, total }: { members: MemberPreview[]; total: n
 function WorkspacesPopover({
   workspaces,
   total,
-  onNavigate,
+  onViewAll,
 }: {
   workspaces: { id: string; name: string; type: WorkspaceType }[];
   total: number;
-  onNavigate: () => void;
+  onViewAll: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [search, setSearch] = useState('');
+  const [shown, setShown] = useState(PAGE_SIZE);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setSearch(''); setShown(PAGE_SIZE); }
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const filtered = search.trim()
+    ? workspaces.filter((w) => w.name.toLowerCase().includes(search.toLowerCase()))
+    : workspaces;
+  const visible = filtered.slice(0, shown);
+  const hasMore = filtered.length > shown;
+
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); if (!open) { setSearch(''); setShown(PAGE_SIZE); } }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         className="flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors"
@@ -214,7 +280,6 @@ function WorkspacesPopover({
         <span className="font-medium">{total}</span>
       </button>
 
-      {/* Tooltip */}
       {hovered && !open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
           {total} workspaces
@@ -222,30 +287,56 @@ function WorkspacesPopover({
       )}
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
-          <p className="px-3 py-1.5 text-2xs font-medium text-gray-400 uppercase tracking-wide border-b border-gray-100">
-            Workspaces ({total})
-          </p>
-          <div className="max-h-48 overflow-y-auto">
-            {workspaces.map((ws) => {
-              const { icon: TypeIcon, color } = WORKSPACE_TYPE_ICONS[ws.type];
-              return (
-                <div key={ws.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50">
-                  <TypeIcon size={11} className={`${color} flex-shrink-0`} />
-                  <span className="text-xs text-gray-700 truncate">{ws.name}</span>
-                </div>
-              );
-            })}
+        <div className="absolute left-0 top-full mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-xl z-50" onClick={(e) => e.stopPropagation()}>
+          {/* Search */}
+          <div className="px-2.5 py-2 border-b border-gray-100">
+            <div className="relative">
+              <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setShown(PAGE_SIZE); }}
+                placeholder="Search workspaces…"
+                className="w-full pl-6 pr-2 py-1 text-xs border border-gray-200 rounded bg-gray-50 outline-none focus:border-gray-400 focus:bg-white placeholder-gray-400"
+              />
+            </div>
           </div>
-          {total > workspaces.length && (
+
+          {/* List */}
+          <div className="max-h-52 overflow-y-auto py-1">
+            {visible.length === 0 ? (
+              <p className="px-3 py-3 text-xs text-gray-400 text-center">No results</p>
+            ) : (
+              visible.map((ws) => {
+                const { icon: TypeIcon, color } = WORKSPACE_TYPE_ICONS[ws.type];
+                return (
+                  <div key={ws.id} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50">
+                    <TypeIcon size={11} className={`${color} flex-shrink-0`} />
+                    <span className="text-xs text-gray-700 truncate">{ws.name}</span>
+                  </div>
+                );
+              })
+            )}
+            {hasMore && (
+              <button
+                onClick={() => setShown((s) => s + PAGE_SIZE)}
+                className="w-full px-3 py-1.5 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-50 text-left"
+              >
+                Load {Math.min(PAGE_SIZE, filtered.length - shown)} more…
+              </button>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-gray-100">
             <button
-              onClick={(e) => { e.stopPropagation(); setOpen(false); onNavigate(); }}
-              className="w-full flex items-center justify-between px-3 py-1.5 text-2xs text-gray-500 hover:text-gray-800 border-t border-gray-100 hover:bg-gray-50"
+              onClick={() => { setOpen(false); onViewAll(); }}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-50 font-medium"
             >
               <span>View all {total} workspaces</span>
-              <ChevronRight size={11} />
+              <ChevronRight size={12} />
             </button>
-          )}
+          </div>
         </div>
       )}
     </div>

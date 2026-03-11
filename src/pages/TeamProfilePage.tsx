@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Star, Lock, ArrowLeft } from 'lucide-react';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { Avatar } from '../components/ui/Avatar';
@@ -15,11 +15,18 @@ type Tab = 'workspaces' | 'members';
 export function TeamProfilePage() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { teams, joinTeam, requestToJoin, leaveTeam, toggleStar, pendingRequests } = useTeamsStore();
   const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState<Tab>('workspaces');
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+
+  // Honour ?tab= query param (e.g. from popover "View all" links)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'members' || tab === 'workspaces') setActiveTab(tab);
+  }, [searchParams]);
 
   const team = teams.find((t) => t.id === teamId);
 

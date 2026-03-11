@@ -7,30 +7,43 @@ import { useTeamsStore } from '../store/teamsStore';
 import type { Team } from '../types';
 
 type FilterMode = 'all' | 'my-teams' | 'not-member';
-type SortCol = 'name' | 'members' | 'workspaces';
-type SortDir = 'asc' | 'desc';
+type SortMode = 'member-first' | 'az' | 'members' | 'workspaces';
 type ViewMode = 'grid' | 'list';
 
 const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
   { value: 'all', label: 'All teams' },
   { value: 'my-teams', label: 'My teams' },
-  { value: 'not-member', label: 'Not a member' },
+  { value: 'not-member', label: 'Discover' },
 ];
 
-function sortTeams(teams: Team[], col: SortCol, dir: SortDir): Team[] {
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'member-first', label: 'My teams first' },
+  { value: 'az', label: 'A–Z' },
+  { value: 'members', label: 'Members' },
+  { value: 'workspaces', label: 'Workspaces' },
+];
+
+function sortTeams(teams: Team[], mode: SortMode): Team[] {
   const starred = teams.filter((t) => t.isStarred);
   const rest = teams.filter((t) => !t.isStarred);
 
-  function compareFn(a: Team, b: Team) {
-    let v = 0;
-    if (col === 'name') v = a.name.localeCompare(b.name);
-    else if (col === 'members') v = a.membersCount - b.membersCount;
-    else if (col === 'workspaces') v = a.workspacesCount - b.workspacesCount;
-    return dir === 'asc' ? v : -v;
+  function cmp(a: Team, b: Team): number {
+    if (mode === 'member-first') {
+      if (a.isMember !== b.isMember) return a.isMember ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    }
+    if (mode === 'az') return a.name.localeCompare(b.name);
+    if (mode === 'members') return b.membersCount - a.membersCount;
+    if (mode === 'workspaces') return b.workspacesCount - a.workspacesCount;
+    return 0;
   }
 
-  return [...starred.sort(compareFn), ...rest.sort(compareFn)];
+  // Starred always float to top, sorted among themselves by same rule
+  return [...starred.sort(cmp), ...rest.sort(cmp)];
 }
+
+type SortCol = 'name' | 'members' | 'workspaces';
+type SortDir = 'asc' | 'desc';
 
 function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
   if (active !== col) return <ChevronsUpDown size={11} className="text-gray-400 ml-0.5" />;
@@ -39,46 +52,44 @@ function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: So
     : <ChevronDown size={11} className="text-gray-700 ml-0.5" />;
 }
 
-function SectionLabel({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex items-center gap-2 mb-3">
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
-      <span className="text-2xs text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5 font-medium">{count}</span>
-    </div>
-  );
-}
-
 export function TeamsPage() {
   const { teams } = useTeamsStore();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
-  const [sortCol, setSortCol] = useState<SortCol>('name');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [sortMode, setSortMode] = useState<SortMode>('member-first');
   const [view, setView] = useState<ViewMode>('grid');
   const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+
+  // For list-view column sort (overrides sortMode)
+  const [listSortCol, setListSortCol] = useState<SortCol>('name');
+  const [listSortDir, setListSortDir] = useState<SortDir>('asc');
+
   const filterRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
-        setFilterOpen(false);
-      }
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false);
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   function handleColSort(col: SortCol) {
-    if (sortCol === col) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    if (listSortCol === col) {
+      setListSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
-      setSortCol(col);
-      setSortDir('asc');
+      setListSortCol(col);
+      setListSortDir('asc');
     }
   }
 
-  const { myTeams, otherTeams } = useMemo(() => {
+  const filtered = useMemo(() => {
     let result = teams;
+    if (filter === 'my-teams') result = result.filter((t) => t.isMember);
+    if (filter === 'not-member') result = result.filter((t) => !t.isMember);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -86,22 +97,25 @@ export function TeamsPage() {
       );
     }
 
-    const sorted = sortTeams(result, sortCol, sortDir);
+    if (view === 'list') {
+      // List view uses column sorting
+      const starred = result.filter((t) => t.isStarred);
+      const rest = result.filter((t) => !t.isStarred);
+      function listCmp(a: Team, b: Team) {
+        let v = 0;
+        if (listSortCol === 'name') v = a.name.localeCompare(b.name);
+        else if (listSortCol === 'members') v = a.membersCount - b.membersCount;
+        else if (listSortCol === 'workspaces') v = a.workspacesCount - b.workspacesCount;
+        return listSortDir === 'asc' ? v : -v;
+      }
+      return [...starred.sort(listCmp), ...rest.sort(listCmp)];
+    }
 
-    if (filter === 'my-teams') return { myTeams: sorted.filter((t) => t.isMember), otherTeams: [] };
-    if (filter === 'not-member') return { myTeams: [], otherTeams: sorted.filter((t) => !t.isMember) };
-
-    return {
-      myTeams: sorted.filter((t) => t.isMember),
-      otherTeams: sorted.filter((t) => !t.isMember),
-    };
-  }, [teams, filter, sortCol, sortDir, search]);
+    return sortTeams(result, sortMode);
+  }, [teams, filter, sortMode, search, view, listSortCol, listSortDir]);
 
   const currentFilterLabel = FILTER_OPTIONS.find((o) => o.value === filter)?.label ?? 'All teams';
-  const showSections = filter === 'all';
-  const allFiltered = [...myTeams, ...otherTeams];
-
-  const gridClass = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3';
+  const currentSortLabel = SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? 'My teams first';
 
   return (
     <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
@@ -127,6 +141,7 @@ export function TeamsPage() {
           />
         </div>
 
+        {/* Filter */}
         <div ref={filterRef} className="relative">
           <button
             onClick={() => setFilterOpen(!filterOpen)}
@@ -136,7 +151,7 @@ export function TeamsPage() {
             <ChevronDown size={11} className="text-gray-400" />
           </button>
           {filterOpen && (
-            <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+            <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
               {FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -150,6 +165,33 @@ export function TeamsPage() {
           )}
         </div>
 
+        {/* Sort (grid only) */}
+        {view === 'grid' && (
+          <div ref={sortRef} className="relative">
+            <button
+              onClick={() => setSortOpen(!sortOpen)}
+              className="flex items-center gap-1.5 border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-700 hover:border-gray-400 bg-white"
+            >
+              <span>{currentSortLabel}</span>
+              <ChevronDown size={11} className="text-gray-400" />
+            </button>
+            {sortOpen && (
+              <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setSortMode(opt.value); setSortOpen(false); }}
+                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${sortMode === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* View toggle */}
         <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
           <button
             onClick={() => setView('grid')}
@@ -168,77 +210,30 @@ export function TeamsPage() {
         </div>
       </div>
 
-      {allFiltered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 text-sm">No teams found</div>
       ) : view === 'list' ? (
         <>
-          {/* List column headers */}
-          <div className="flex items-center px-4 py-1.5 border-b border-gray-200 mb-0">
+          <div className="flex items-center px-4 py-1.5 border-b border-gray-200">
             <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
-              Name <SortIcon col="name" active={sortCol} dir={sortDir} />
+              Name <SortIcon col="name" active={listSortCol} dir={listSortDir} />
             </button>
             <button onClick={() => handleColSort('members')} className="flex items-center w-32 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
-              Members <SortIcon col="members" active={sortCol} dir={sortDir} />
+              Members <SortIcon col="members" active={listSortCol} dir={listSortDir} />
             </button>
             <button onClick={() => handleColSort('workspaces')} className="flex items-center w-28 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
-              Workspaces <SortIcon col="workspaces" active={sortCol} dir={sortDir} />
+              Workspaces <SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
             </button>
             <div className="w-32" />
           </div>
-
-          {showSections && myTeams.length > 0 && otherTeams.length > 0 ? (
-            <>
-              {/* My teams section */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
-                {myTeams.map((team) => <TeamRow key={team.id} team={team} />)}
-              </div>
-              {/* Divider label */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex-1 border-t border-gray-200" />
-                <span className="text-2xs text-gray-400 font-medium uppercase tracking-wide">Discover</span>
-                <div className="flex-1 border-t border-gray-200" />
-              </div>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                {otherTeams.map((team) => <TeamRow key={team.id} team={team} />)}
-              </div>
-            </>
-          ) : (
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              {allFiltered.map((team) => <TeamRow key={team.id} team={team} />)}
-            </div>
-          )}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            {filtered.map((team) => <TeamRow key={team.id} team={team} />)}
+          </div>
         </>
       ) : (
-        // Grid view
-        showSections && myTeams.length > 0 && otherTeams.length > 0 ? (
-          <>
-            {myTeams.length > 0 && (
-              <div className="mb-6">
-                <SectionLabel label="My teams" count={myTeams.length} />
-                <div className={gridClass}>
-                  {myTeams.map((team) => <TeamCard key={team.id} team={team} />)}
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 border-t border-gray-200" />
-              <span className="text-2xs text-gray-400 font-medium uppercase tracking-wide">Discover</span>
-              <div className="flex-1 border-t border-gray-200" />
-            </div>
-            {otherTeams.length > 0 && (
-              <div>
-                <SectionLabel label="Not a member" count={otherTeams.length} />
-                <div className={gridClass}>
-                  {otherTeams.map((team) => <TeamCard key={team.id} team={team} />)}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className={gridClass}>
-            {allFiltered.map((team) => <TeamCard key={team.id} team={team} />)}
-          </div>
-        )
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filtered.map((team) => <TeamCard key={team.id} team={team} />)}
+        </div>
       )}
     </div>
   );
