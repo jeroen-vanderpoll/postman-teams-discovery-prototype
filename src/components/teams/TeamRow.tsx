@@ -84,19 +84,17 @@ export function TeamRow({ team }: TeamRowProps) {
               <OverflowMenu items={overflowItems} />
             </>
           ) : isPending ? (
-            <button className="btn-secondary opacity-60 text-2xs px-2 py-1 cursor-default" disabled>
-              Requested
-            </button>
+            <span className="text-2xs text-gray-400 italic px-1">Requested</span>
           ) : team.isOpen ? (
-            <button className="btn-primary text-2xs px-2.5 py-1" onClick={handleJoin}>
+            <button className="btn-secondary text-2xs px-2.5 py-1" onClick={handleJoin}>
               Join
             </button>
           ) : (
             <button
-              className="btn-primary text-2xs px-2.5 py-1"
+              className="btn-secondary text-2xs px-2.5 py-1"
               onClick={() => setShowJoinModal(true)}
             >
-              Request to join
+              Ask to join
             </button>
           )}
         </div>

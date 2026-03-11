@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Lock, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
@@ -25,92 +26,96 @@ export function TeamCard({ team }: TeamCardProps) {
     handleToggleStar,
   } = useTeamActions(team);
 
-  const overflowItems = [
-    ...(team.isMember
-      ? [{ label: 'Leave team', onClick: () => setShowLeaveDialog(true), danger: true }]
-      : []),
-  ];
+  const overflowItems = team.isMember
+    ? [
+        { label: 'Add members', onClick: () => {} },
+        { label: 'Leave team', onClick: () => setShowLeaveDialog(true), danger: true },
+      ]
+    : [];
 
   return (
     <>
       <div
         onClick={() => navigate(`/teams/${team.id}`)}
-        className="card p-3 cursor-pointer hover:border-gray-300 hover:shadow-md transition-all group relative flex flex-col gap-2"
+        className="card px-3 pt-3 pb-2.5 cursor-pointer hover:border-gray-300 hover:shadow transition-all group relative flex flex-col"
       >
-        {/* Row 1: avatar + name + top-right actions */}
-        <div className="flex items-start gap-2">
-          <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
+        {/* ── Top-right chrome: star + kebab ── */}
+        <div
+          className="absolute top-2.5 right-2.5 flex items-center gap-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {team.isMember && (
+            <>
+              {/* Kebab — visible on hover only */}
+              {overflowItems.length > 0 && (
+                <KebabMenu items={overflowItems} />
+              )}
+              {/* Star — always visible if starred, otherwise on hover */}
+              <button
+                onClick={handleToggleStar}
+                className={`p-1 rounded transition-colors ${
+                  team.isStarred
+                    ? 'text-yellow-400'
+                    : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
+                }`}
+              >
+                <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} />
+              </button>
+            </>
+          )}
+        </div>
 
-          <div className="flex-1 min-w-0">
+        {/* ── Row 1: avatar + name + handle ── */}
+        <div className="flex items-center gap-2 mb-1 pr-12">
+          <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
+          <div className="min-w-0">
             <div className="flex items-center gap-1">
               <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{team.name}</p>
               {!team.isOpen && <Lock size={9} className="text-gray-400 flex-shrink-0" />}
             </div>
-            <p className="text-2xs text-gray-400 leading-tight">{team.workspacesCount} workspaces</p>
+            <p className="text-2xs text-gray-400 leading-tight truncate">{team.handle}</p>
           </div>
+        </div>
 
-          {/* Top-right: star + kebab (member) or CTA (non-member) */}
-          <div className="flex items-center gap-0.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            {team.isMember ? (
-              <>
-                <button
-                  onClick={handleToggleStar}
-                  className={`p-1 rounded transition-colors ${
-                    team.isStarred
-                      ? 'text-yellow-400'
-                      : 'text-gray-300 opacity-0 group-hover:opacity-100 hover:text-yellow-400'
-                  }`}
-                >
-                  <Star size={11} fill={team.isStarred ? 'currentColor' : 'none'} />
-                </button>
-                {overflowItems.length > 0 && (
-                  <KebabMenu items={overflowItems} />
-                )}
-              </>
-            ) : isPending ? (
-              <span className="text-2xs text-gray-400 italic">Requested</span>
+        {/* ── Row 2: metadata ── */}
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-2xs text-gray-500">{team.membersCount.toLocaleString()} members</span>
+          <span className="text-2xs text-gray-300">·</span>
+          <span className="text-2xs text-gray-500">{team.workspacesCount} workspaces</span>
+        </div>
+
+        {/* ── Row 3: bubbleheads ── */}
+        <div className="mb-2.5">
+          <BubbleheadStack members={team.memberPreview} total={team.membersCount} size="md" />
+        </div>
+
+        {/* ── Row 4: bottom-right CTA (non-member only) ── */}
+        {!team.isMember && (
+          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+            {isPending ? (
+              <span className="text-2xs text-gray-400 italic py-1">Requested</span>
             ) : team.isOpen ? (
-              <button
-                className="btn-secondary text-2xs px-2 py-0.5"
-                onClick={handleJoin}
-              >
+              <button className="btn-secondary text-2xs px-2.5 py-1" onClick={handleJoin}>
                 Join
               </button>
             ) : (
-              <button
-                className="btn-secondary text-2xs px-2 py-0.5"
-                onClick={() => setShowJoinModal(true)}
-              >
+              <button className="btn-secondary text-2xs px-2.5 py-1" onClick={() => setShowJoinModal(true)}>
                 Ask to join
               </button>
             )}
           </div>
-        </div>
-
-        {/* Row 2: bubbleheads */}
-        <BubbleheadStack members={team.memberPreview} total={team.membersCount} />
+        )}
       </div>
 
       {showJoinModal && (
-        <JoinRequestModal
-          team={team}
-          onSubmit={handleRequestSubmit}
-          onClose={() => setShowJoinModal(false)}
-        />
+        <JoinRequestModal team={team} onSubmit={handleRequestSubmit} onClose={() => setShowJoinModal(false)} />
       )}
       {showLeaveDialog && (
-        <LeaveConfirmDialog
-          team={team}
-          onConfirm={handleLeaveConfirm}
-          onClose={() => setShowLeaveDialog(false)}
-        />
+        <LeaveConfirmDialog team={team} onConfirm={handleLeaveConfirm} onClose={() => setShowLeaveDialog(false)} />
       )}
     </>
   );
 }
-
-// Inline kebab to avoid importing OverflowMenu (same logic, smaller trigger)
-import { useEffect, useRef, useState } from 'react';
 
 function KebabMenu({ items }: { items: { label: string; onClick: () => void; danger?: boolean }[] }) {
   const [open, setOpen] = useState(false);
