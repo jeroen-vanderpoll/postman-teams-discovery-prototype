@@ -62,7 +62,7 @@ export function TeamRow({ team }: TeamRowProps) {
             total={team.membersCount}
             groups={team.groupsCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=members`)}
-            triggerClassName="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+            triggerClassName="flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
           />
         </div>
 
@@ -72,14 +72,14 @@ export function TeamRow({ team }: TeamRowProps) {
             workspaces={teamWorkspaces}
             total={team.workspacesCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=workspaces`)}
-            triggerClassName="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+            triggerClassName="flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
           />
         </div>
 
         {/* Membership col — w-36 */}
         <div className="w-36 flex-shrink-0">
           {team.memberRole && (
-            <span className="text-xs text-gray-500 capitalize">
+            <span className="text-xs text-gray-700 capitalize">
               {team.memberRole}
             </span>
           )}
