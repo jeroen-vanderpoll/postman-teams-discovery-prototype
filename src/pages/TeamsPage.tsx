@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp, ArrowUpDown, Check } from 'lucide-react';
+import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp, SlidersHorizontal, Check } from 'lucide-react';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
 import { TeamRow } from '../components/teams/TeamRow';
@@ -11,9 +11,9 @@ type SortMode = 'member-first' | 'az' | 'members' | 'workspaces';
 type ViewMode = 'grid' | 'list';
 
 const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
-  { value: 'all', label: 'All teams' },
-  { value: 'my-teams', label: 'My teams' },
-  { value: 'not-member', label: 'Discover' },
+  { value: 'all', label: 'Show all teams' },
+  { value: 'my-teams', label: 'Only my teams' },
+  { value: 'not-member', label: 'Only teams to join' },
 ];
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
@@ -22,6 +22,9 @@ const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: 'members', label: 'Members' },
   { value: 'workspaces', label: 'Workspaces' },
 ];
+
+const DEFAULT_FILTER: FilterMode = 'all';
+const DEFAULT_SORT: SortMode = 'member-first';
 
 function sortTeams(teams: Team[], mode: SortMode): Team[] {
   const starred = teams.filter((t) => t.isStarred);
@@ -38,7 +41,6 @@ function sortTeams(teams: Team[], mode: SortMode): Team[] {
     return 0;
   }
 
-  // Starred always float to top, sorted among themselves by same rule
   return [...starred.sort(cmp), ...rest.sort(cmp)];
 }
 
@@ -55,23 +57,21 @@ function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: So
 export function TeamsPage() {
   const { teams } = useTeamsStore();
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterMode>('all');
-  const [sortMode, setSortMode] = useState<SortMode>('member-first');
+  const [filter, setFilter] = useState<FilterMode>(DEFAULT_FILTER);
+  const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
   const [view, setView] = useState<ViewMode>('grid');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
 
-  // For list-view column sort (overrides sortMode)
   const [listSortCol, setListSortCol] = useState<SortCol>('name');
   const [listSortDir, setListSortDir] = useState<SortDir>('asc');
 
-  const filterRef = useRef<HTMLDivElement>(null);
-  const sortRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+
+  const isCustomized = filter !== DEFAULT_FILTER || (view === 'grid' && sortMode !== DEFAULT_SORT);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false);
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
+      if (controlsRef.current && !controlsRef.current.contains(e.target as Node)) setControlsOpen(false);
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -86,6 +86,12 @@ export function TeamsPage() {
     }
   }
 
+  function handleReset() {
+    setFilter(DEFAULT_FILTER);
+    setSortMode(DEFAULT_SORT);
+    setControlsOpen(false);
+  }
+
   const filtered = useMemo(() => {
     let result = teams;
     if (filter === 'my-teams') result = result.filter((t) => t.isMember);
@@ -98,7 +104,6 @@ export function TeamsPage() {
     }
 
     if (view === 'list') {
-      // List view uses column sorting
       const starred = result.filter((t) => t.isStarred);
       const rest = result.filter((t) => !t.isStarred);
       function listCmp(a: Team, b: Team) {
@@ -113,8 +118,6 @@ export function TeamsPage() {
 
     return sortTeams(result, sortMode);
   }, [teams, filter, sortMode, search, view, listSortCol, listSortDir]);
-
-  const currentFilterLabel = FILTER_OPTIONS.find((o) => o.value === filter)?.label ?? 'All teams';
 
   return (
     <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
@@ -140,72 +143,76 @@ export function TeamsPage() {
           />
         </div>
 
-        {/* Filter */}
-        <div ref={filterRef} className="relative">
+        {/* Merged filter + sort icon */}
+        <div ref={controlsRef} className="relative">
           <button
-            onClick={() => setFilterOpen(!filterOpen)}
-            className="flex items-center gap-1.5 border border-gray-300 rounded px-2.5 py-1.5 text-xs text-gray-700 hover:border-gray-400 bg-white"
+            onClick={() => setControlsOpen(!controlsOpen)}
+            title="Filter &amp; sort"
+            className={`relative flex items-center justify-center w-7 h-7 rounded border transition-colors
+              ${controlsOpen
+                ? 'border-gray-400 bg-gray-100 text-gray-800'
+                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-800'
+              }`}
           >
-            <span>{currentFilterLabel}</span>
-            <ChevronDown size={11} className="text-gray-400" />
+            <SlidersHorizontal size={13} />
+            {isCustomized && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />
+            )}
           </button>
-          {filterOpen && (
-            <div className="absolute left-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+
+          {controlsOpen && (
+            <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
+              {/* Filter section */}
+              <p className="px-3 pt-1.5 pb-0.5 text-2xs font-semibold text-gray-400 uppercase tracking-wider">Show</p>
               {FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
-                  onClick={() => { setFilter(opt.value); setFilterOpen(false); }}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${filter === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
+                  onClick={() => setFilter(opt.value)}
+                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${filter === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
                 >
+                  <span className="w-3 flex-shrink-0">
+                    {filter === opt.value && <Check size={11} className="text-gray-700" />}
+                  </span>
                   {opt.label}
                 </button>
               ))}
+
+              {/* Sort section (grid only) */}
+              {view === 'grid' && (
+                <>
+                  <div className="border-t border-gray-100 my-1" />
+                  <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400 uppercase tracking-wider">Sort by</p>
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSortMode(opt.value)}
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${sortMode === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
+                    >
+                      <span className="w-3 flex-shrink-0">
+                        {sortMode === opt.value && <Check size={11} className="text-gray-700" />}
+                      </span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {/* Reset */}
+              {isCustomized && (
+                <>
+                  <div className="border-t border-gray-100 my-1" />
+                  <button
+                    onClick={handleReset}
+                    className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"
+                  >
+                    <span className="w-3 flex-shrink-0" />
+                    Reset
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
-
-        {/* Sort (grid only) — icon button with orange dot when non-default */}
-        {view === 'grid' && (
-          <div ref={sortRef} className="relative">
-            <button
-              onClick={() => setSortOpen(!sortOpen)}
-              className="relative flex items-center justify-center w-7 h-7 border border-gray-300 rounded hover:border-gray-400 bg-white text-gray-600 hover:text-gray-800 transition-colors"
-              title="Sort"
-            >
-              <ArrowUpDown size={13} />
-              {sortMode !== 'member-first' && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />
-              )}
-            </button>
-            {sortOpen && (
-              <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-                {SORT_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => { setSortMode(opt.value); setSortOpen(false); }}
-                    className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${sortMode === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
-                  >
-                    <span className="w-3 flex-shrink-0">
-                      {sortMode === opt.value && <Check size={11} className="text-gray-700" />}
-                    </span>
-                    {opt.label}
-                  </button>
-                ))}
-                {sortMode !== 'member-first' && (
-                  <>
-                    <div className="border-t border-gray-100 my-1" />
-                    <button
-                      onClick={() => { setSortMode('member-first'); setSortOpen(false); }}
-                      className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium"
-                    >
-                      Reset sorting
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* View toggle */}
         <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
