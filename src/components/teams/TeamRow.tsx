@@ -8,6 +8,8 @@ import { MembersPopover, WorkspacesPopover } from './TeamPopovers';
 import { PendingButton } from './PendingButton';
 import { useTeamActions } from './useTeamActions';
 import { useWorkspacesStore } from '../../store/workspacesStore';
+import { getAccessibleTeamWorkspaces } from '../../utils/workspaceAccess';
+import { buildTeamMemberPreviewList } from '../../utils/teamMembers';
 import type { Team } from '../../types';
 
 interface TeamRowProps {
@@ -37,7 +39,17 @@ export function TeamRow({ team }: TeamRowProps) {
       ]
     : [];
 
-  const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id);
+  const teamWorkspaces = getAccessibleTeamWorkspaces({
+    workspaces,
+    teamId: team.id,
+    isTeamMember: team.isMember,
+    isTeamOpen: team.isOpen,
+  });
+  const teamMembers = buildTeamMemberPreviewList({
+    teamId: team.id,
+    total: team.membersCount,
+    memberPreview: team.memberPreview,
+  });
 
   return (
     <>
@@ -60,7 +72,7 @@ export function TeamRow({ team }: TeamRowProps) {
         {/* Members col — w-44, popover on click, tooltip on hover */}
         <div className="w-44 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <MembersPopover
-            members={team.memberPreview}
+            members={teamMembers}
             total={team.membersCount}
             groups={team.groupsCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=members`)}
@@ -72,7 +84,6 @@ export function TeamRow({ team }: TeamRowProps) {
         <div className="w-36 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <WorkspacesPopover
             workspaces={teamWorkspaces}
-            total={team.workspacesCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=workspaces`)}
             triggerClassName="flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
           />

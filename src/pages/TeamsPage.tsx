@@ -4,6 +4,8 @@ import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
 import { TeamRow } from '../components/teams/TeamRow';
 import { useTeamsStore } from '../store/teamsStore';
+import { useWorkspacesStore } from '../store/workspacesStore';
+import { getAccessibleTeamWorkspaces } from '../utils/workspaceAccess';
 import type { Team } from '../types';
 
 type FilterMode = 'all' | 'my-teams' | 'not-member';
@@ -27,7 +29,11 @@ const DEFAULT_FILTER: FilterMode = 'all';
 const DEFAULT_SORT: SortMode = 'member-first';
 const VIEW_STORAGE_KEY = 'teams-view-mode';
 
-function sortTeams(teams: Team[], mode: SortMode): Team[] {
+function sortTeams(
+  teams: Team[],
+  mode: SortMode,
+  getAccessibleWorkspaceCount: (team: Team) => number
+): Team[] {
   const starred = teams.filter((t) => t.isStarred);
   const rest = teams.filter((t) => !t.isStarred);
 
@@ -38,7 +44,7 @@ function sortTeams(teams: Team[], mode: SortMode): Team[] {
     }
     if (mode === 'az') return a.name.localeCompare(b.name);
     if (mode === 'members') return b.membersCount - a.membersCount;
-    if (mode === 'workspaces') return b.workspacesCount - a.workspacesCount;
+    if (mode === 'workspaces') return getAccessibleWorkspaceCount(b) - getAccessibleWorkspaceCount(a);
     return 0;
   }
 
@@ -64,6 +70,7 @@ function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: So
 
 export function TeamsPage() {
   const { teams } = useTeamsStore();
+  const { workspaces } = useWorkspacesStore();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>(DEFAULT_FILTER);
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
@@ -78,6 +85,14 @@ export function TeamsPage() {
   const controlsRef = useRef<HTMLDivElement>(null);
 
   const isCustomized = filter !== DEFAULT_FILTER || (view === 'grid' && sortMode !== DEFAULT_SORT);
+
+  const getAccessibleWorkspaceCount = (team: Team) =>
+    getAccessibleTeamWorkspaces({
+      workspaces,
+      teamId: team.id,
+      isTeamMember: team.isMember,
+      isTeamOpen: team.isOpen,
+    }).length;
 
   // Persist view preference
   function setViewAndPersist(v: ViewMode) {
@@ -126,15 +141,17 @@ export function TeamsPage() {
         let v = 0;
         if (listSortCol === 'name') v = a.name.localeCompare(b.name);
         else if (listSortCol === 'members') v = a.membersCount - b.membersCount;
-        else if (listSortCol === 'workspaces') v = a.workspacesCount - b.workspacesCount;
+        else if (listSortCol === 'workspaces') {
+          v = getAccessibleWorkspaceCount(a) - getAccessibleWorkspaceCount(b);
+        }
         else if (listSortCol === 'membership') v = membershipRank(a.memberRole) - membershipRank(b.memberRole);
         return listSortDir === 'asc' ? v : -v;
       }
       return [...starred.sort(listCmp), ...rest.sort(listCmp)];
     }
 
-    return sortTeams(result, sortMode);
-  }, [teams, filter, sortMode, search, view, listSortCol, listSortDir]);
+    return sortTeams(result, sortMode, getAccessibleWorkspaceCount);
+  }, [teams, workspaces, filter, sortMode, search, view, listSortCol, listSortDir]);
 
   return (
     <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
@@ -165,10 +182,10 @@ export function TeamsPage() {
           <button
             onClick={() => setControlsOpen(!controlsOpen)}
             title="Filter &amp; sort"
-            className={`relative flex items-center justify-center w-7 h-7 rounded border transition-colors
+            className={`relative flex items-center justify-center p-1.5 rounded transition-colors
               ${controlsOpen
-                ? 'border-gray-400 bg-gray-100 text-gray-800'
-                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-800'
+                ? 'bg-gray-100 text-gray-800'
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
               }`}
           >
             <SlidersHorizontal size={13} />
@@ -180,7 +197,7 @@ export function TeamsPage() {
           {controlsOpen && (
             <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
               {/* Filter section */}
-              <p className="px-3 pt-1.5 pb-0.5 text-2xs font-semibold text-gray-400 uppercase tracking-wider">Show</p>
+              <p className="px-3 pt-1.5 pb-0.5 text-2xs font-semibold text-gray-400">Show</p>
               {FILTER_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -198,7 +215,7 @@ export function TeamsPage() {
               {view === 'grid' && (
                 <>
                   <div className="border-t border-gray-100 my-1" />
-                  <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400 uppercase tracking-wider">Sort by</p>
+                  <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400">Sort by</p>
                   {SORT_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
@@ -255,16 +272,16 @@ export function TeamsPage() {
       ) : view === 'list' ? (
         <>
           <div className="flex items-center px-4 py-1.5 border-b border-gray-200">
-            <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+            <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 hover:text-gray-700">
               Name <SortIcon col="name" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('members')} className="flex items-center w-44 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+            <button onClick={() => handleColSort('members')} className="flex items-center w-44 text-2xs font-medium text-gray-500 hover:text-gray-700">
               Members <SortIcon col="members" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-36 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-36 text-2xs font-medium text-gray-500 hover:text-gray-700">
               Workspaces <SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
             </button>
-            <button onClick={() => handleColSort('membership')} className="flex items-center w-36 text-2xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700">
+            <button onClick={() => handleColSort('membership')} className="flex items-center w-36 text-2xs font-medium text-gray-500 hover:text-gray-700">
               Your Membership <SortIcon col="membership" active={listSortCol} dir={listSortDir} />
             </button>
             <div className="w-24" />

@@ -121,12 +121,10 @@ export function MembersPopover({
 // ── Workspaces popover ───────────────────────────────────────────────────────
 export function WorkspacesPopover({
   workspaces,
-  total,
   onViewAll,
   triggerClassName,
 }: {
   workspaces: { id: string; name: string; type: WorkspaceType }[];
-  total: number;
   onViewAll: () => void;
   triggerClassName?: string;
 }) {
@@ -151,6 +149,7 @@ export function WorkspacesPopover({
     : workspaces;
   const visible = filtered.slice(0, shown);
   const hasMore = filtered.length > shown;
+  const total = workspaces.length;
 
   return (
     <div ref={ref} className="relative">

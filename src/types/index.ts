@@ -1,4 +1,6 @@
 export type WorkspaceType = 'internal' | 'partner' | 'public';
+export type WorkspaceContributorRole = 'admin' | 'editor' | 'viewer';
+export type WorkspaceInternalAccess = 'org-wide' | 'team-wide' | 'private';
 
 export interface MemberPreview {
   id: string;
@@ -7,10 +9,20 @@ export interface MemberPreview {
   avatarColor: string;
 }
 
+export interface WorkspaceContributor extends MemberPreview {
+  role: WorkspaceContributorRole;
+}
+
+export interface WorkspaceCollection {
+  id: string;
+  name: string;
+}
+
 export interface Team {
   id: string;
   name: string;
   handle: string;
+  slackChannel?: string;
   initials: string;
   avatarColor: string;
   isOpen: boolean;
@@ -28,10 +40,17 @@ export interface Workspace {
   id: string;
   teamId: string;
   name: string;
+  visibility?: 'shared' | 'personal';
+  ownerUserId?: string;
   collectionsCount: number;
   apisCount: number;
+  contributorsCount: number;
+  yourRole: WorkspaceContributorRole;
   contributorPreview: MemberPreview[];
+  contributors: WorkspaceContributor[];
+  collections: WorkspaceCollection[];
   type: WorkspaceType;
+  internalAccess?: WorkspaceInternalAccess;
   lastActivityTimestamp: string;
   isStarred: boolean;
 }

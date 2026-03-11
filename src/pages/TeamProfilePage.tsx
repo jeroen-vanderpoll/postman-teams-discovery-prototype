@@ -8,15 +8,68 @@ import { MembersTab } from '../components/teams/MembersTab';
 import { JoinRequestModal } from '../components/teams/JoinRequestModal';
 import { LeaveConfirmDialog } from '../components/teams/LeaveConfirmDialog';
 import { useTeamsStore } from '../store/teamsStore';
+import { useWorkspacesStore } from '../store/workspacesStore';
 import { useToastStore } from '../store/toastStore';
+import { getAccessibleTeamWorkspaces } from '../utils/workspaceAccess';
+import { buildTeamMemberPreviewList } from '../utils/teamMembers';
+import type { MemberPreview } from '../types';
 
 type Tab = 'workspaces' | 'members';
+
+// ── Inline sub-component ──────────────────────────────────────────────────────
+function MemberBubbleheads({
+  members,
+  total,
+  onClick,
+}: {
+  members: MemberPreview[];
+  total: number;
+  onClick: () => void;
+}) {
+  const MAX_SHOWN = 10;
+  const showOverflow = total > MAX_SHOWN;
+  // Show 9 avatars + overflow circle when > 10, otherwise show up to 10
+  const visible = showOverflow ? members.slice(0, 9) : members.slice(0, MAX_SHOWN);
+  const overflow = total - 9;
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center -space-x-1 hover:opacity-80 transition-opacity"
+    >
+      {visible.map((m) => (
+        <span
+          key={m.id}
+          className="relative group/avatar w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-semibold ring-1 ring-white"
+          style={{ backgroundColor: m.avatarColor }}
+        >
+          {m.initials.slice(0, 2)}
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-1.5 py-0.5 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none opacity-0 group-hover/avatar:opacity-100 transition-opacity z-20">
+            {m.name}
+          </span>
+        </span>
+      ))}
+      {showOverflow && (
+        <span
+          className="relative group/overflow w-5 h-5 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-[9px] font-medium ring-1 ring-white"
+        >
+          +{overflow > 99 ? '99' : overflow}
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-1.5 py-0.5 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none opacity-0 group-hover/overflow:opacity-100 transition-opacity z-20">
+            {total.toLocaleString()} members total
+          </span>
+        </span>
+      )}
+    </button>
+  );
+}
+
 
 export function TeamProfilePage() {
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { teams, joinTeam, requestToJoin, leaveTeam, toggleStar, pendingRequests } = useTeamsStore();
+  const { workspaces } = useWorkspacesStore();
   const { addToast } = useToastStore();
   const [activeTab, setActiveTab] = useState<Tab>('workspaces');
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -32,7 +85,7 @@ export function TeamProfilePage() {
 
   if (!team) {
     return (
-      <div className="px-8 pt-8 max-w-4xl mx-auto">
+      <div className="px-8 pt-8 max-w-5xl mx-auto">
         <button
           onClick={() => navigate('/teams')}
           className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 mb-4"
@@ -46,6 +99,21 @@ export function TeamProfilePage() {
   }
 
   const isPending = pendingRequests.has(team.id);
+  const teamMembers = buildTeamMemberPreviewList({
+    teamId: team.id,
+    total: team.membersCount,
+    memberPreview: team.memberPreview,
+  });
+  const slackChannel = team.slackChannel;
+  const slackUrl = slackChannel
+    ? `https://slack.com/app_redirect?channel=${encodeURIComponent(slackChannel)}`
+    : null;
+  const accessibleWorkspacesCount = getAccessibleTeamWorkspaces({
+    workspaces,
+    teamId: team.id,
+    isTeamMember: team.isMember,
+    isTeamOpen: team.isOpen,
+  }).length;
 
   function handleJoin() {
     joinTeam(team!.id);
@@ -66,7 +134,7 @@ export function TeamProfilePage() {
   }
 
   return (
-    <div className="px-8 pt-5 pb-10 max-w-4xl mx-auto">
+    <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
       <Breadcrumb
         items={[
           { label: 'Postman', to: '/' },
@@ -76,7 +144,7 @@ export function TeamProfilePage() {
       />
 
       {/* Profile header */}
-      <div className="flex items-start gap-4 mb-5 pt-1">
+      <div className="flex items-start gap-4 mb-7 pt-4">
         <Avatar initials={team.initials} color={team.avatarColor} size="xl" />
 
         <div className="flex-1 min-w-0">
@@ -89,10 +157,37 @@ export function TeamProfilePage() {
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mb-1">{team.handle}</p>
-          {team.description && (
-            <p className="text-xs text-gray-500 mt-1.5 max-w-lg">{team.description}</p>
-          )}
+          <div className="flex items-center gap-2 mb-2">
+            <p className="text-xs text-gray-500">{team.handle}</p>
+            {slackChannel && slackUrl && (
+              <>
+                <span className="text-gray-300 text-xs">•</span>
+                <a
+                  href={slackUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 min-w-0"
+                >
+                  <span className="w-3 h-3 inline-flex items-center justify-center flex-shrink-0">
+                    <svg viewBox="0 0 127 127" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+                      <path d="M27.2 80c0 7.3-5.9 13.2-13.2 13.2C6.7 93.2.8 87.3.8 80c0-7.3 5.9-13.2 13.2-13.2h13.2V80zm6.6 0c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2v33c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V80z" fill="#E01E5A"/>
+                      <path d="M47 27c-7.3 0-13.2-5.9-13.2-13.2C33.8 6.5 39.7.6 47 .6c7.3 0 13.2 5.9 13.2 13.2V27H47zm0 6.7c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H13.9C6.6 60.1.7 54.2.7 46.9c0-7.3 5.9-13.2 13.2-13.2H47z" fill="#36C5F0"/>
+                      <path d="M99.9 46.9c0-7.3 5.9-13.2 13.2-13.2 7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H99.9V46.9zm-6.6 0c0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V13.8C66.9 6.5 72.8.6 80.1.6c7.3 0 13.2 5.9 13.2 13.2v33.1z" fill="#2EB67D"/>
+                      <path d="M80.1 99.8c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2-7.3 0-13.2-5.9-13.2-13.2V99.8h13.2zm0-6.6c-7.3 0-13.2-5.9-13.2-13.2 0-7.3 5.9-13.2 13.2-13.2h33.1c7.3 0 13.2 5.9 13.2 13.2 0 7.3-5.9 13.2-13.2 13.2H80.1z" fill="#ECB22E"/>
+                    </svg>
+                  </span>
+                  <span className="truncate">#{slackChannel}</span>
+                </a>
+              </>
+            )}
+          </div>
+
+          {/* Member bubbleheads — click to go to Members tab */}
+          <MemberBubbleheads
+            members={teamMembers}
+            total={team.membersCount}
+            onClick={() => setActiveTab('members')}
+          />
         </div>
 
         {/* Header actions */}
@@ -109,12 +204,17 @@ export function TeamProfilePage() {
               >
                 <Star size={13} fill={team.isStarred ? 'currentColor' : 'none'} />
               </button>
-              <button
-                onClick={() => setShowLeaveDialog(true)}
-                className="btn-secondary"
-              >
-                Leave team
-              </button>
+              <div className="relative group/leave">
+                <button
+                  onClick={() => setShowLeaveDialog(true)}
+                  className="btn-destructive"
+                >
+                  Leave
+                </button>
+                <div className="absolute right-0 top-full mt-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none opacity-0 group-hover/leave:opacity-100 transition-opacity z-10">
+                  Leave team
+                </div>
+              </div>
             </>
           ) : isPending ? (
             <button className="btn-secondary opacity-60" disabled>
@@ -126,62 +226,57 @@ export function TeamProfilePage() {
             </button>
           ) : (
             <button className="btn-primary" onClick={() => setShowJoinModal(true)}>
-              Request to join            </button>
+              Request to join
+            </button>
           )}
         </div>
       </div>
 
-      {/* Closed team non-member gate */}
-      {!team.isOpen && !team.isMember && !isPending && (
-        <div className="mb-5 p-4 border border-gray-200 rounded-lg bg-gray-50 text-center">
-          <Lock size={18} className="text-gray-400 mx-auto mb-2" />
-          <p className="text-sm font-medium text-gray-700 mb-1">This team requires approval</p>
-          <p className="text-xs text-gray-500 mb-3">
-            Send a request to join and a team admin will review it.
-          </p>
-          <button className="btn-primary" onClick={() => setShowJoinModal(true)}>
-            Request to join
-          </button>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-4">
-        <div className="flex gap-0">
-          <button
-            onClick={() => setActiveTab('workspaces')}
-            className={`px-4 py-2 text-xs font-medium transition-colors -mb-px ${
-              activeTab === 'workspaces'
-                ? 'border-b-2 border-gray-900 text-gray-900'
-                : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
-            }`}
-          >
-            Workspaces ({team.workspacesCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('members')}
-            className={`px-4 py-2 text-xs font-medium transition-colors -mb-px ${
-              activeTab === 'members'
-                ? 'border-b-2 border-gray-900 text-gray-900'
-                : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
-            }`}
-          >
-            Members ({team.membersCount.toLocaleString()})
-          </button>
-        </div>
+      {/* Tabs — grey pill style */}
+      <div className="flex gap-1 mb-4">
+        <button
+          onClick={() => setActiveTab('workspaces')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            activeTab === 'workspaces'
+              ? 'bg-gray-100 text-gray-900'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Workspaces ({accessibleWorkspacesCount})
+        </button>
+        <button
+          onClick={() => setActiveTab('members')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            activeTab === 'members'
+              ? 'bg-gray-100 text-gray-900'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+          }`}
+        >
+          Members ({team.membersCount.toLocaleString()})
+        </button>
       </div>
 
       {/* Tab content */}
-      {activeTab === 'workspaces' ? (
+      {activeTab === 'members' ? (
+        <MembersTab
+          teamId={team.id}
+          membersCount={team.membersCount}
+          memberPreview={team.memberPreview}
+          isMember={team.isMember}
+          isTeamOpen={team.isOpen}
+          isPending={isPending}
+          currentUserMembership={team.memberRole}
+          onJoin={handleJoin}
+          onRequestToJoin={() => setShowJoinModal(true)}
+        />
+      ) : (
         (!team.isOpen && !team.isMember && !isPending) ? (
           <div className="text-center py-12 text-gray-400 text-sm">
             Join this team to view workspaces.
           </div>
         ) : (
-          <WorkspacesTab teamId={team.id} isMember={team.isMember} />
+          <WorkspacesTab teamId={team.id} isMember={team.isMember} isTeamOpen={team.isOpen} />
         )
-      ) : (
-        <MembersTab isMember={team.isMember} />
       )}
 
       {showJoinModal && (

@@ -1,20 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Lock, MoreHorizontal, Search } from 'lucide-react';
+import { Star, Lock, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { JoinRequestModal } from './JoinRequestModal';
 import { LeaveConfirmDialog } from './LeaveConfirmDialog';
 import { useTeamActions } from './useTeamActions';
 import { useWorkspacesStore } from '../../store/workspacesStore';
-import { MembersPopover, WorkspacesPopover, WORKSPACE_TYPE_ICONS } from './TeamPopovers';
+import { MembersPopover, WorkspacesPopover } from './TeamPopovers';
 import { PendingButton } from './PendingButton';
+import { getAccessibleTeamWorkspaces } from '../../utils/workspaceAccess';
+import { buildTeamMemberPreviewList } from '../../utils/teamMembers';
 import type { Team } from '../../types';
 
 interface TeamCardProps {
   team: Team;
 }
-
-const PAGE_SIZE = 8;
 
 export function TeamCard({ team }: TeamCardProps) {
   const navigate = useNavigate();
@@ -39,7 +39,17 @@ export function TeamCard({ team }: TeamCardProps) {
       ]
     : [];
 
-  const teamWorkspaces = workspaces.filter((w) => w.teamId === team.id);
+  const teamWorkspaces = getAccessibleTeamWorkspaces({
+    workspaces,
+    teamId: team.id,
+    isTeamMember: team.isMember,
+    isTeamOpen: team.isOpen,
+  });
+  const teamMembers = buildTeamMemberPreviewList({
+    teamId: team.id,
+    total: team.membersCount,
+    memberPreview: team.memberPreview,
+  });
 
   return (
     <>
@@ -103,14 +113,13 @@ export function TeamCard({ team }: TeamCardProps) {
         {/* ── Metadata chips — indent to align with name/handle ── */}
         <div className="flex items-center gap-3 pl-8" onClick={(e) => e.stopPropagation()}>
           <MembersPopover
-            members={team.memberPreview}
+            members={teamMembers}
             total={team.membersCount}
             groups={team.groupsCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=members`)}
           />
           <WorkspacesPopover
             workspaces={teamWorkspaces}
-            total={team.workspacesCount}
             onViewAll={() => navigate(`/teams/${team.id}?tab=workspaces`)}
           />
         </div>

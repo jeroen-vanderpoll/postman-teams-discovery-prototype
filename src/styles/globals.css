@@ -26,6 +26,10 @@
     @apply border border-gray-300 text-gray-800 text-xs font-medium px-3 py-1.5 rounded hover:bg-gray-50 transition-colors bg-white;
   }
 
+  .btn-destructive {
+    @apply border border-red-200 text-red-600 text-xs font-medium px-3 py-1.5 rounded hover:bg-red-50 hover:border-red-300 transition-colors bg-white;
+  }
+
   .btn-ghost {
     @apply text-gray-500 text-xs font-medium px-2 py-1 rounded hover:bg-gray-100 transition-colors;
   }
