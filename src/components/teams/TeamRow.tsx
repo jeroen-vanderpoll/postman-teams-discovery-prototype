@@ -15,7 +15,7 @@ interface TeamRowProps {
 
 const ROLE_STYLES: Record<'member' | 'collaborator', string> = {
   member: 'text-gray-500',
-  collaborator: 'text-blue-500',
+  collaborator: 'text-gray-500',
 };
 
 export function TeamRow({ team }: TeamRowProps) {
