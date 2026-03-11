@@ -48,6 +48,7 @@ interface MembersTabProps {
   currentUserMembership: 'member' | 'collaborator' | null;
   onJoin: () => void;
   onRequestToJoin: () => void;
+  onInvitePeople: () => void;
 }
 
 function toHandle(name: string): string {
@@ -110,6 +111,7 @@ export function MembersTab({
   currentUserMembership,
   onJoin,
   onRequestToJoin,
+  onInvitePeople,
 }: MembersTabProps) {
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<SortCol>('membership');
@@ -339,7 +341,14 @@ export function MembersTab({
               </div>
             </div>
           ))}
-          {!isMember && (
+          {isMember ? (
+            <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
+              <p className="text-xs text-gray-600">Grow the crew?</p>
+              <button className="btn-secondary text-2xs px-2 py-1" onClick={onInvitePeople}>
+                Invite people
+              </button>
+            </div>
+          ) : (
             <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
               <p className="text-xs text-gray-600">Want in on the fun?</p>
               {isPending ? (

@@ -161,7 +161,7 @@ export function TeamsPage() {
         <h1 className="text-xl font-semibold text-gray-900">Teams</h1>
         <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700">
           <ExternalLink size={12} />
-          Open Settings
+          Manage teams
         </button>
       </div>
 

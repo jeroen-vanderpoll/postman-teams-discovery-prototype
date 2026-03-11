@@ -4,6 +4,7 @@ import { WorkspaceRow } from './WorkspaceRow';
 import { WorkspaceCard } from './WorkspaceCard';
 import { Avatar } from '../ui/Avatar';
 import { useWorkspacesStore } from '../../store/workspacesStore';
+import { useToastStore } from '../../store/toastStore';
 import { getAccessibleTeamWorkspaces } from '../../utils/workspaceAccess';
 import type { Workspace, WorkspaceType } from '../../types';
 
@@ -56,6 +57,7 @@ interface WorkspacesTabProps {
 
 export function WorkspacesTab({ teamId, isMember, isTeamOpen = true }: WorkspacesTabProps) {
   const { workspaces } = useWorkspacesStore();
+  const { addToast } = useToastStore();
   const [search, setSearch] = useState('');
   const ALL_TYPES = TYPE_OPTIONS.map((o) => o.value);
   const [typeFilters, setTypeFilters] = useState<WorkspaceType[]>(ALL_TYPES);
@@ -300,8 +302,16 @@ export function WorkspacesTab({ teamId, isMember, isTeamOpen = true }: Workspace
           )}
         </div>
 
-        {/* View toggle */}
-        <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
+        {/* Right-side actions */}
+        {isMember && (
+          <button
+            onClick={() => addToast('Create workspace flow coming soon', 'info')}
+            className="btn-primary text-2xs px-2.5 py-1.5 ml-auto"
+          >
+            Create workspace
+          </button>
+        )}
+        <div className={`flex items-center border border-gray-200 rounded overflow-hidden ${isMember ? '' : 'ml-auto'}`}>
           <button
             onClick={() => setView('list')}
             className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
@@ -375,6 +385,17 @@ export function WorkspacesTab({ teamId, isMember, isTeamOpen = true }: Workspace
           {teamWorkspaces.map((ws) => (
             <WorkspaceCard key={ws.id} workspace={ws} />
           ))}
+          {isMember && (
+            <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
+              <p className="text-xs text-gray-600">Need another workspace?</p>
+              <button
+                onClick={() => addToast('Create workspace flow coming soon', 'info')}
+                className="btn-secondary text-2xs px-2 py-1"
+              >
+                Create workspace
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

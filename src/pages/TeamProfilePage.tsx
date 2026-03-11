@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Star, Lock, ArrowLeft } from 'lucide-react';
+import { Star, Lock, ArrowLeft, ExternalLink } from 'lucide-react';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { Avatar } from '../components/ui/Avatar';
 import { WorkspacesTab } from '../components/workspaces/WorkspacesTab';
@@ -182,16 +182,30 @@ export function TeamProfilePage() {
             )}
           </div>
 
-          {/* Member bubbleheads — click to go to Members tab */}
-          <MemberBubbleheads
-            members={teamMembers}
-            total={team.membersCount}
-            onClick={() => setActiveTab('members')}
-          />
+          {/* Member bubbleheads + invite action */}
+          <div className="flex items-center gap-2">
+            <MemberBubbleheads
+              members={teamMembers}
+              total={team.membersCount}
+              onClick={() => setActiveTab('members')}
+            />
+            {team.isMember && (
+              <button
+                onClick={() => addToast('Invite flow coming soon', 'info')}
+                className="btn-secondary text-2xs px-2 py-0.5"
+              >
+                Invite
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Header actions */}
         <div className="flex items-center gap-2 flex-shrink-0 pt-1">
+          <button className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 mr-1">
+            <ExternalLink size={12} />
+            Manage team
+          </button>
           {team.isMember ? (
             <>
               <button
@@ -268,6 +282,7 @@ export function TeamProfilePage() {
           currentUserMembership={team.memberRole}
           onJoin={handleJoin}
           onRequestToJoin={() => setShowJoinModal(true)}
+          onInvitePeople={() => addToast('Invite flow coming soon', 'info')}
         />
       ) : (
         (!team.isOpen && !team.isMember && !isPending) ? (
