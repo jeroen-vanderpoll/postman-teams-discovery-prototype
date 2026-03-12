@@ -75,7 +75,7 @@ export function TeamsPage() {
   const [filter, setFilter] = useState<FilterMode>(DEFAULT_FILTER);
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
   const [view, setView] = useState<ViewMode>(
-    () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as ViewMode | null) ?? 'grid'
+    () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as ViewMode | null) ?? 'list'
   );
   const [controlsOpen, setControlsOpen] = useState(false);
 
@@ -251,18 +251,18 @@ export function TeamsPage() {
         {/* View toggle */}
         <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
           <button
-            onClick={() => setViewAndPersist('grid')}
-            className={`p-1.5 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="Grid view"
-          >
-            <LayoutGrid size={13} />
-          </button>
-          <button
             onClick={() => setViewAndPersist('list')}
             className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
             title="List view"
           >
             <List size={13} />
+          </button>
+          <button
+            onClick={() => setViewAndPersist('grid')}
+            className={`p-1.5 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+            title="Grid view"
+          >
+            <LayoutGrid size={13} />
           </button>
         </div>
       </div>

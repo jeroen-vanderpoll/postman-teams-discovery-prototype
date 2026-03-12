@@ -17,7 +17,7 @@ type SortDir = 'asc' | 'desc';
 
 const MEMBERSHIP_RANK: Record<Membership, number> = { Collaborator: 0, Member: 1 };
 const ROLE_RANK: Record<Role, number> = { Manager: 0, Developer: 1 };
-const VIEW_STORAGE_KEY = 'team-members-view-mode';
+const VIEW_STORAGE_KEY = 'team-members-view-mode-v2';
 const DEFAULT_ROLE_FILTER: Role | 'all' = 'all';
 const DEFAULT_MEMBERSHIP_FILTER: Membership | 'all' = 'all';
 
@@ -255,7 +255,15 @@ export function MembersTab({
             </div>
           )}
         </div>
-        <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
+        {isMember && (
+          <button
+            onClick={onInvitePeople}
+            className="btn-primary text-2xs px-2.5 py-1.5 ml-auto"
+          >
+            Invite people
+          </button>
+        )}
+        <div className={`flex items-center border border-gray-200 rounded overflow-hidden ${isMember ? '' : 'ml-auto'}`}>
           <button
             onClick={() => setViewAndPersist('list')}
             className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}

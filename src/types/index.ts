@@ -23,6 +23,9 @@ export interface Team {
   name: string;
   handle: string;
   slackChannel?: string;
+  heroImageUrl?: string;
+  about?: string;
+  aiSummary?: string;
   initials: string;
   avatarColor: string;
   isOpen: boolean;
