@@ -27,6 +27,9 @@ function daysAgo(d: number): string {
 function minutesAgo(m: number): string {
   return new Date(Date.now() - m * 60 * 1000).toISOString();
 }
+function toRepoSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
 
 const ROLE_ORDER: WorkspaceContributorRole[] = ['admin', 'editor', 'viewer'];
 const YOUR_ROLE_CYCLE: WorkspaceContributorRole[] = ['admin', 'editor', 'viewer'];
@@ -203,6 +206,7 @@ export const MOCK_WORKSPACES: Workspace[] = WORKSPACES_RAW.map((workspace, index
   return {
     ...workspace,
     yourRole: YOUR_ROLE_CYCLE[index % YOUR_ROLE_CYCLE.length],
+    gitRepo: workspace.type === 'internal' && index % 3 === 0 ? `postman/${toRepoSlug(workspace.name)}` : undefined,
     contributors: buildContributors(workspace.contributorsCount, index + 1),
     collections: buildCollections(workspace.collectionsCount, workspace.name),
     internalAccess,

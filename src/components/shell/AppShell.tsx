@@ -2,7 +2,7 @@ import { Search, Bell, Settings, HelpCircle, ChevronDown } from 'lucide-react';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="h-screen overflow-hidden flex flex-col bg-white">
       <header className="h-9 border-b border-gray-200 flex items-center px-3 gap-3 flex-shrink-0 bg-white z-40">
         {/* Left: Logo + Workspaces */}
         <div className="flex items-center gap-1 min-w-0">

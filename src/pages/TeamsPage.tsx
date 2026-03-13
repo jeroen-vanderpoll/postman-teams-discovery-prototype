@@ -1,90 +1,43 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, LayoutGrid, List, ChevronDown, ExternalLink, ChevronsUpDown, ChevronUp, SlidersHorizontal, Check } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ExternalLink, LayoutGrid, List, Lock, Sparkles, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
-import { TeamRow } from '../components/teams/TeamRow';
+import { Avatar } from '../components/ui/Avatar';
+import { DatabaseTable, type DatabaseTableColumn, type DatabaseTableState } from '../components/ui/DatabaseTable';
+import { TableAgentPane } from '../components/ui/TableAgentPane';
+import { TableGridControls } from '../components/ui/TableGridControls';
+import { JoinRequestModal } from '../components/teams/JoinRequestModal';
+import { PendingButton } from '../components/teams/PendingButton';
 import { useTeamsStore } from '../store/teamsStore';
+import { useToastStore } from '../store/toastStore';
 import { useWorkspacesStore } from '../store/workspacesStore';
+import { MembersPopover, WorkspacesPopover } from '../components/teams/TeamPopovers';
 import { getAccessibleTeamWorkspaces } from '../utils/workspaceAccess';
+import { buildTeamMemberPreviewList } from '../utils/teamMembers';
+import {
+  STARRED_OPTIONS,
+  TEAMS_MEMBERSHIP_OPTIONS,
+  parseTeamsSemanticInput,
+} from '../utils/tableSemantics';
 import type { Team } from '../types';
 
-type FilterMode = 'all' | 'my-teams' | 'not-member';
-type SortMode = 'member-first' | 'az' | 'members' | 'workspaces';
 type ViewMode = 'grid' | 'list';
-
-const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
-  { value: 'all', label: 'Show all teams' },
-  { value: 'my-teams', label: 'Only my teams' },
-  { value: 'not-member', label: 'Only teams to join' },
-];
-
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: 'member-first', label: 'My teams first' },
-  { value: 'az', label: 'A–Z' },
-  { value: 'members', label: 'Members' },
-  { value: 'workspaces', label: 'Workspaces' },
-];
-
-const DEFAULT_FILTER: FilterMode = 'all';
-const DEFAULT_SORT: SortMode = 'member-first';
 const VIEW_STORAGE_KEY = 'teams-view-mode';
 
-function sortTeams(
-  teams: Team[],
-  mode: SortMode,
-  getAccessibleWorkspaceCount: (team: Team) => number
-): Team[] {
-  const starred = teams.filter((t) => t.isStarred);
-  const rest = teams.filter((t) => !t.isStarred);
-
-  function cmp(a: Team, b: Team): number {
-    if (mode === 'member-first') {
-      if (a.isMember !== b.isMember) return a.isMember ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    }
-    if (mode === 'az') return a.name.localeCompare(b.name);
-    if (mode === 'members') return b.membersCount - a.membersCount;
-    if (mode === 'workspaces') return getAccessibleWorkspaceCount(b) - getAccessibleWorkspaceCount(a);
-    return 0;
-  }
-
-  return [...starred.sort(cmp), ...rest.sort(cmp)];
-}
-
-// Membership sort order: member → collaborator → null
-function membershipRank(role: Team['memberRole']): number {
-  if (role === 'member') return 0;
-  if (role === 'collaborator') return 1;
-  return 2;
-}
-
-type SortCol = 'name' | 'members' | 'workspaces' | 'membership';
-type SortDir = 'asc' | 'desc';
-
-function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
-  if (active !== col) return <ChevronsUpDown size={11} className="text-gray-400 ml-0.5" />;
-  return dir === 'asc'
-    ? <ChevronUp size={11} className="text-gray-700 ml-0.5" />
-    : <ChevronDown size={11} className="text-gray-700 ml-0.5" />;
-}
-
 export function TeamsPage() {
-  const { teams } = useTeamsStore();
+  const { teams, joinTeam, requestToJoin, withdrawRequest, toggleStar, pendingRequests } = useTeamsStore();
+  const { addToast } = useToastStore();
+  const navigate = useNavigate();
   const { workspaces } = useWorkspacesStore();
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<FilterMode>(DEFAULT_FILTER);
-  const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
   const [view, setView] = useState<ViewMode>(
     () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as ViewMode | null) ?? 'list'
   );
-  const [controlsOpen, setControlsOpen] = useState(false);
-
-  const [listSortCol, setListSortCol] = useState<SortCol>('name');
-  const [listSortDir, setListSortDir] = useState<SortDir>('asc');
-
-  const controlsRef = useRef<HTMLDivElement>(null);
-
-  const isCustomized = filter !== DEFAULT_FILTER || (view === 'grid' && sortMode !== DEFAULT_SORT);
+  const [tableState, setTableState] = useState<DatabaseTableState>({});
+  const [tableStateVersion, setTableStateVersion] = useState(0);
+  const [showAgentPane, setShowAgentPane] = useState(false);
+  const [agentInput, setAgentInput] = useState('');
+  const [joinModalTeam, setJoinModalTeam] = useState<Team | null>(null);
 
   const getAccessibleWorkspaceCount = (team: Team) =>
     getAccessibleTeamWorkspaces({
@@ -100,61 +53,178 @@ export function TeamsPage() {
     sessionStorage.setItem(VIEW_STORAGE_KEY, v);
   }
 
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (controlsRef.current && !controlsRef.current.contains(e.target as Node)) setControlsOpen(false);
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  function handleColSort(col: SortCol) {
-    if (listSortCol === col) {
-      setListSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setListSortCol(col);
-      setListSortDir('asc');
-    }
+  function applyAgentPrompt(input: string) {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    const interpreted = parseTeamsSemanticInput(trimmed);
+    const hasFilters =
+      interpreted.filters !== undefined && Object.keys(interpreted.filters).length > 0;
+    const resolvedSearch =
+      interpreted.search !== undefined ? interpreted.search : hasFilters ? '' : trimmed;
+    setTableState((current) => ({
+      ...current,
+      search: resolvedSearch,
+      filters: interpreted.filters ?? current.filters ?? {},
+    }));
+    setTableStateVersion((current) => current + 1);
+    setAgentInput('');
   }
 
-  function handleReset() {
-    setFilter(DEFAULT_FILTER);
-    setSortMode(DEFAULT_SORT);
-    setControlsOpen(false);
-  }
-
-  const filtered = useMemo(() => {
-    let result = teams;
-    if (filter === 'my-teams') result = result.filter((t) => t.isMember);
-    if (filter === 'not-member') result = result.filter((t) => !t.isMember);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (t) => t.name.toLowerCase().includes(q) || t.handle.toLowerCase().includes(q)
-      );
-    }
-
-    if (view === 'list') {
-      const starred = result.filter((t) => t.isStarred);
-      const rest = result.filter((t) => !t.isStarred);
-      function listCmp(a: Team, b: Team) {
-        let v = 0;
-        if (listSortCol === 'name') v = a.name.localeCompare(b.name);
-        else if (listSortCol === 'members') v = a.membersCount - b.membersCount;
-        else if (listSortCol === 'workspaces') {
-          v = getAccessibleWorkspaceCount(a) - getAccessibleWorkspaceCount(b);
-        }
-        else if (listSortCol === 'membership') v = membershipRank(a.memberRole) - membershipRank(b.memberRole);
-        return listSortDir === 'asc' ? v : -v;
+  const listRows = useMemo(
+    () =>
+      teams.map((team) => ({
+        ...team,
+        membershipLabel: team.memberRole === 'member' ? 'Member' : team.memberRole === 'collaborator' ? 'Collaborator' : 'Not a member',
+        accessibleWorkspacesCount: getAccessibleWorkspaceCount(team),
+        accessibleWorkspaces: getAccessibleTeamWorkspaces({
+          workspaces,
+          teamId: team.id,
+          isTeamMember: team.isMember,
+          isTeamOpen: team.isOpen,
+        }),
+        teamMembers: buildTeamMemberPreviewList({
+          teamId: team.id,
+          total: team.membersCount,
+          memberPreview: team.memberPreview,
+        }),
+      })),
+    [teams, workspaces]
+  );
+  const gridRows = useMemo(() => {
+    const search = tableState.search?.trim().toLowerCase() ?? '';
+    const membershipFilter = Array.isArray(tableState.filters?.membership)
+      ? tableState.filters?.membership
+      : [];
+    const starredFilter = Array.isArray(tableState.filters?.actions)
+      ? tableState.filters?.actions
+      : [];
+    return teams.filter((team) => {
+      const membershipLabel =
+        team.memberRole === 'member'
+          ? 'Member'
+          : team.memberRole === 'collaborator'
+            ? 'Collaborator'
+            : 'Not a member';
+      if (search && !`${team.name} ${team.handle} ${membershipLabel}`.toLowerCase().includes(search)) {
+        return false;
       }
-      return [...starred.sort(listCmp), ...rest.sort(listCmp)];
-    }
+      if (membershipFilter.length > 0 && !membershipFilter.includes(membershipLabel)) return false;
+      if (starredFilter.length > 0 && !starredFilter.includes(String(team.isStarred))) return false;
+      return true;
+    });
+  }, [tableState.filters, tableState.search, teams]);
 
-    return sortTeams(result, sortMode, getAccessibleWorkspaceCount);
-  }, [teams, workspaces, filter, sortMode, search, view, listSortCol, listSortDir]);
+  const tableColumns: DatabaseTableColumn<(typeof listRows)[number]>[] = [
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (row) => <TeamNameCell team={row} onOpen={() => window.location.assign(`/teams/${row.id}`)} />,
+      getValue: (row) => row.name,
+      width: '40%',
+    },
+    {
+      id: 'membersCount',
+      header: 'Members',
+      accessor: (row) => (
+        <div onClick={(event) => event.stopPropagation()}>
+          <MembersPopover
+            members={row.teamMembers}
+            total={row.membersCount}
+            groups={row.groupsCount}
+            onViewAll={() => navigate(`/teams/${row.id}?tab=members`)}
+            triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+          />
+        </div>
+      ),
+      getValue: (row) => row.membersCount,
+      width: '14%',
+    },
+    {
+      id: 'workspacesCount',
+      header: 'Workspaces',
+      accessor: (row) => (
+        <div onClick={(event) => event.stopPropagation()}>
+          <WorkspacesPopover
+            workspaces={row.accessibleWorkspaces.map((workspace) => ({
+              id: workspace.id,
+              name: workspace.name,
+              type: workspace.type,
+            }))}
+            onViewAll={() => navigate(`/teams/${row.id}?tab=workspaces`)}
+            triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+          />
+        </div>
+      ),
+      getValue: (row) => row.accessibleWorkspacesCount,
+      width: '14%',
+    },
+    {
+      id: 'membership',
+      header: 'Membership',
+      accessor: (row) => row.membershipLabel,
+      getValue: (row) => row.membershipLabel,
+      width: '18%',
+    },
+    {
+      id: 'actions',
+      header: '',
+      accessor: (row) => (
+        <TeamActionsCell
+          team={row}
+          isPending={pendingRequests.has(row.id)}
+          onJoin={() => {
+            joinTeam(row.id);
+            addToast(`You joined ${row.name}`);
+          }}
+          onRequestToJoin={() => setJoinModalTeam(row)}
+          onWithdraw={() => {
+            withdrawRequest(row.id);
+            addToast(`Request withdrawn for ${row.name}`, 'info');
+          }}
+          onToggleStar={() => toggleStar(row.id)}
+        />
+      ),
+      getValue: (row) => row.isStarred,
+      align: 'right',
+      width: '12%',
+      isHideable: false,
+    },
+  ];
+
+  const askAiControl = (
+    <button
+      onClick={() => setShowAgentPane(true)}
+      className="inline-flex h-8 items-center gap-1 rounded border border-gray-200 px-2 text-xs text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+    >
+      <Sparkles size={12} />
+      Ask AI
+    </button>
+  );
+  const viewToggleControl = (
+    <div className="inline-flex h-8 w-16 overflow-hidden rounded border border-gray-200">
+      <button
+        onClick={() => setViewAndPersist('list')}
+        className={`inline-flex h-full w-1/2 items-center justify-center border-r border-gray-200 ${
+          view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+        }`}
+        title="List view"
+      >
+        <List size={12} />
+      </button>
+      <button
+        onClick={() => setViewAndPersist('grid')}
+        className={`inline-flex h-full w-1/2 items-center justify-center ${
+          view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+        }`}
+        title="Grid view"
+      >
+        <LayoutGrid size={12} />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="px-8 pt-5 pb-10 max-w-5xl mx-auto">
+    <div className={`px-8 pt-5 pb-10 ${showAgentPane ? '' : 'max-w-6xl mx-auto'}`}>
       <Breadcrumb items={[{ label: 'Postman', to: '/' }, { label: 'Teams' }]} />
 
       <div className="flex items-center justify-between mb-4">
@@ -165,136 +235,161 @@ export function TeamsPage() {
         </button>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search teams…"
-            className="input-base pl-7 w-52"
+      <div className={showAgentPane ? 'lg:pr-[380px]' : ''}>
+        {view === 'list' ? (
+          <DatabaseTable
+            rows={listRows}
+            columns={tableColumns}
+            getRowId={(row) => row.id}
+            defaultVisibleColumnIds={tableColumns.map((column) => column.id)}
+            searchableColumnIds={['name', 'membership']}
+            filterableColumnIds={['membership', 'actions']}
+            filterSelectionModeByColumnId={{ membership: 'multi', actions: 'single' }}
+            filterOptionsByColumnId={{ membership: TEAMS_MEMBERSHIP_OPTIONS, actions: STARRED_OPTIONS }}
+            filterSectionLabelByColumnId={{ membership: 'Membership', actions: 'Starred' }}
+            initialState={tableState}
+            stateVersion={tableStateVersion}
+            onStateChange={(state) => setTableState(state)}
+            emptyStateText="No teams match current criteria."
+            enableRowSelection
+            bulkActions={[
+              { id: 'star', label: 'Star selected' },
+              { id: 'unstar', label: 'Unstar selected' },
+              { id: 'export', label: 'Export' },
+            ]}
+            aiControl={askAiControl}
+            rightControls={viewToggleControl}
           />
-        </div>
-
-        {/* Merged filter + sort icon */}
-        <div ref={controlsRef} className="relative">
-          <button
-            onClick={() => setControlsOpen(!controlsOpen)}
-            title="Filter &amp; sort"
-            className={`relative flex items-center justify-center p-1.5 rounded transition-colors
-              ${controlsOpen
-                ? 'bg-gray-100 text-gray-800'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-              }`}
-          >
-            <SlidersHorizontal size={13} />
-            {isCustomized && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />
-            )}
-          </button>
-
-          {controlsOpen && (
-            <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-              {/* Filter section */}
-              <p className="px-3 pt-1.5 pb-0.5 text-2xs font-semibold text-gray-400">Show</p>
-              {FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setFilter(opt.value)}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${filter === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
-                >
-                  <span className="w-3 flex-shrink-0">
-                    {filter === opt.value && <Check size={11} className="text-gray-700" />}
-                  </span>
-                  {opt.label}
-                </button>
-              ))}
-
-              {/* Sort section (grid only) */}
-              {view === 'grid' && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
-                  <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400">Sort by</p>
-                  {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setSortMode(opt.value)}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${sortMode === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
-                    >
-                      <span className="w-3 flex-shrink-0">
-                        {sortMode === opt.value && <Check size={11} className="text-gray-700" />}
-                      </span>
-                      {opt.label}
-                    </button>
-                  ))}
-                </>
-              )}
-
-              {/* Reset */}
-              {isCustomized && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
-                  <button
-                    onClick={handleReset}
-                    className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"
-                  >
-                    <span className="w-3 flex-shrink-0" />
-                    Reset
-                  </button>
-                </>
-              )}
+        ) : (
+          <div>
+            <TableGridControls
+              search={tableState.search ?? ''}
+              onSearchChange={(value) => setTableState((current) => ({ ...current, search: value }))}
+              filterableColumnIds={['membership', 'actions']}
+              filters={tableState.filters ?? {}}
+              onFilterChange={(columnId, value) =>
+                setTableState((current) => ({
+                  ...current,
+                  filters: {
+                    ...(current.filters ?? {}),
+                    [columnId]: value,
+                  },
+                }))
+              }
+              filterOptionsByColumnId={{ membership: TEAMS_MEMBERSHIP_OPTIONS, actions: STARRED_OPTIONS }}
+              filterSectionLabelByColumnId={{ membership: 'Membership', actions: 'Starred' }}
+              columns={tableColumns}
+              aiControl={askAiControl}
+              rightControls={viewToggleControl}
+            />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {gridRows.map((team) => <TeamCard key={team.id} team={team} />)}
             </div>
-          )}
-        </div>
-
-        {/* View toggle */}
-        <div className="flex items-center border border-gray-200 rounded overflow-hidden ml-auto">
-          <button
-            onClick={() => setViewAndPersist('list')}
-            className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="List view"
-          >
-            <List size={13} />
-          </button>
-          <button
-            onClick={() => setViewAndPersist('grid')}
-            className={`p-1.5 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="Grid view"
-          >
-            <LayoutGrid size={13} />
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 text-sm">No teams found</div>
-      ) : view === 'list' ? (
-        <>
-          <div className="flex items-center px-4 py-1.5 border-b border-gray-200">
-            <button onClick={() => handleColSort('name')} className="flex items-center flex-1 text-2xs font-medium text-gray-500 hover:text-gray-700">
-              Name <SortIcon col="name" active={listSortCol} dir={listSortDir} />
-            </button>
-            <button onClick={() => handleColSort('members')} className="flex items-center w-44 text-2xs font-medium text-gray-500 hover:text-gray-700">
-              Members <SortIcon col="members" active={listSortCol} dir={listSortDir} />
-            </button>
-            <button onClick={() => handleColSort('workspaces')} className="flex items-center w-36 text-2xs font-medium text-gray-500 hover:text-gray-700">
-              Workspaces <SortIcon col="workspaces" active={listSortCol} dir={listSortDir} />
-            </button>
-            <button onClick={() => handleColSort('membership')} className="flex items-center w-36 text-2xs font-medium text-gray-500 hover:text-gray-700">
-              Your Membership <SortIcon col="membership" active={listSortCol} dir={listSortDir} />
-            </button>
-            <div className="w-24" />
-          </div>
-          <div className="divide-y divide-gray-100">
-            {filtered.map((team) => <TeamRow key={team.id} team={team} />)}
-          </div>
-        </>
+      {showAgentPane ? (
+        <TableAgentPane
+          suggestions={['Show teams to join', 'Show my teams', 'Show starred teams']}
+          value={agentInput}
+          onChange={setAgentInput}
+          onSubmit={applyAgentPrompt}
+          onClose={() => setShowAgentPane(false)}
+        />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {filtered.map((team) => <TeamCard key={team.id} team={team} />)}
+        <button
+          onClick={() => setShowAgentPane(true)}
+          className="fixed bottom-4 right-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-gray-300 hover:text-gray-700"
+          aria-label="Open assistant"
+        >
+          <Sparkles size={14} />
+        </button>
+      )}
+
+      {joinModalTeam ? (
+        <JoinRequestModal
+          team={joinModalTeam}
+          onSubmit={(note) => {
+            requestToJoin(joinModalTeam.id);
+            setJoinModalTeam(null);
+            addToast(`Request sent to ${joinModalTeam.name}`, 'info');
+            void note;
+          }}
+          onClose={() => setJoinModalTeam(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TeamNameCell({ team, onOpen }: { team: Team; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen();
+      }}
+      className="flex w-full items-center gap-2.5 min-w-0 text-left"
+    >
+      <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
+      <div className="min-w-0 flex flex-col gap-0.5">
+        <div className="flex items-center gap-1">
+          <span className="text-xs font-semibold text-gray-900 truncate hover:underline">{team.name}</span>
+          {!team.isOpen ? <Lock size={10} className="text-gray-400 flex-shrink-0" /> : null}
         </div>
+        <span className="text-2xs text-gray-400 leading-tight">{team.handle}</span>
+      </div>
+    </button>
+  );
+}
+
+function TeamActionsCell({
+  team,
+  isPending,
+  onJoin,
+  onRequestToJoin,
+  onWithdraw,
+  onToggleStar,
+}: {
+  team: Team;
+  isPending: boolean;
+  onJoin: () => void;
+  onRequestToJoin: () => void;
+  onWithdraw: () => void;
+  onToggleStar: () => void;
+}) {
+
+  return (
+    <div className="flex justify-end">
+      {team.isMember ? (
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggleStar();
+          }}
+          className="p-1 text-gray-400 hover:text-yellow-400"
+        >
+          <Star size={12} fill={team.isStarred ? 'currentColor' : 'none'} className={team.isStarred ? 'text-yellow-400' : ''} />
+        </button>
+      ) : isPending ? (
+        <div onClick={(event) => event.stopPropagation()}>
+          <PendingButton onWithdraw={onWithdraw} size="sm" />
+        </div>
+      ) : (
+        <button
+          className="btn-secondary text-2xs px-2.5 py-1"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (team.isOpen) onJoin();
+            else onRequestToJoin();
+          }}
+        >
+          Join
+        </button>
       )}
     </div>
   );
 }
+

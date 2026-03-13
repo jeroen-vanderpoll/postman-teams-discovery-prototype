@@ -54,6 +54,7 @@ export interface Workspace {
   collections: WorkspaceCollection[];
   type: WorkspaceType;
   internalAccess?: WorkspaceInternalAccess;
+  gitRepo?: string;
   lastActivityTimestamp: string;
   isStarred: boolean;
 }

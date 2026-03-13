@@ -61,7 +61,7 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
         <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${accessVisual.iconBg}`}>
           <AccessIcon size={13} className={accessVisual.iconClass} />
         </div>
-        <div className="min-w-0 flex-1 relative group/peek">
+        <div className="min-w-0 flex-1 relative z-10 group/peek hover:z-30">
           <p className="text-xs font-semibold text-gray-900 truncate leading-tight">{workspace.name}</p>
           <WorkspacePeekCard
             workspace={workspace}

@@ -1,115 +1,60 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, LayoutGrid, List, ChevronsUpDown, ChevronUp, ChevronDown, SlidersHorizontal, Check } from 'lucide-react';
-import { WorkspaceRow } from './WorkspaceRow';
+import { useEffect, useMemo, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { Building2, Globe, Handshake, LayoutGrid, List, Lock, Sparkles, Star, Users } from 'lucide-react';
 import { WorkspaceCard } from './WorkspaceCard';
-import { Avatar } from '../ui/Avatar';
+import { ContributorsPopover, CollectionsPopover } from './WorkspacePopovers';
+import { WorkspacePeekCard } from './WorkspacePeekCard';
+import { DatabaseTable, type DatabaseTableColumn, type DatabaseTableState } from '../ui/DatabaseTable';
+import { TableAgentPane } from '../ui/TableAgentPane';
+import { TableGridControls } from '../ui/TableGridControls';
 import { useWorkspacesStore } from '../../store/workspacesStore';
 import { useToastStore } from '../../store/toastStore';
+import { useTeamsStore } from '../../store/teamsStore';
 import { getAccessibleTeamWorkspaces } from '../../utils/workspaceAccess';
-import type { Workspace, WorkspaceType } from '../../types';
-
-type SortCol = 'name' | 'contributors' | 'collections' | 'activity';
-type SortDir = 'asc' | 'desc';
-
-function sortWorkspaces(workspaces: Workspace[], col: SortCol, dir: SortDir): Workspace[] {
-  const starred = workspaces.filter((w) => w.isStarred);
-  const rest = workspaces.filter((w) => !w.isStarred);
-
-  function cmp(a: Workspace, b: Workspace) {
-    let v = 0;
-    if (col === 'name') v = a.name.localeCompare(b.name);
-    else if (col === 'contributors') v = a.contributorsCount - b.contributorsCount;
-    else if (col === 'collections') v = a.collectionsCount - b.collectionsCount;
-    else if (col === 'activity') {
-      v = new Date(a.lastActivityTimestamp).getTime() - new Date(b.lastActivityTimestamp).getTime();
-    }
-    return dir === 'asc' ? v : -v;
-  }
-
-  return [...starred.sort(cmp), ...rest.sort(cmp)];
-}
-
-function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
-  if (active !== col) return <ChevronsUpDown size={11} className="text-gray-400 ml-0.5" />;
-  return dir === 'asc'
-    ? <ChevronUp size={11} className="text-gray-700 ml-0.5" />
-    : <ChevronDown size={11} className="text-gray-700 ml-0.5" />;
-}
-
-const TYPE_OPTIONS: { value: WorkspaceType; label: string }[] = [
-  { value: 'internal', label: 'Internal' },
-  { value: 'partner', label: 'Partner' },
-  { value: 'public', label: 'Public' },
-];
-
-const SORT_OPTIONS: { value: SortCol; label: string }[] = [
-  { value: 'activity', label: 'Activity' },
-  { value: 'name', label: 'Name' },
-  { value: 'contributors', label: 'Contributors' },
-  { value: 'collections', label: 'Collections' },
-];
+import {
+  STARRED_OPTIONS,
+  WORKSPACES_ACCESS_OPTIONS,
+  WORKSPACES_GIT_OPTIONS,
+  WORKSPACES_ROLE_OPTIONS,
+  parseWorkspacesSemanticInput,
+} from '../../utils/tableSemantics';
+import type { Workspace } from '../../types';
 
 interface WorkspacesTabProps {
   teamId: string;
   isMember: boolean;
   isTeamOpen?: boolean;
+  onAgentPaneOpenChange?: (open: boolean) => void;
 }
 
-export function WorkspacesTab({ teamId, isMember, isTeamOpen = true }: WorkspacesTabProps) {
+export function WorkspacesTab({
+  teamId,
+  isMember,
+  isTeamOpen = true,
+  onAgentPaneOpenChange,
+}: WorkspacesTabProps) {
   const { workspaces } = useWorkspacesStore();
+  const { teams } = useTeamsStore();
   const { addToast } = useToastStore();
-  const [search, setSearch] = useState('');
-  const ALL_TYPES = TYPE_OPTIONS.map((o) => o.value);
-  const [typeFilters, setTypeFilters] = useState<WorkspaceType[]>(ALL_TYPES);
-  const [selectedContributorNames, setSelectedContributorNames] = useState<string[]>([]);
-  const [contributorSearch, setContributorSearch] = useState('');
-  const [sortCol, setSortCol] = useState<SortCol>('activity');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [view, setView] = useState<'list' | 'grid'>('list');
-  const [controlsOpen, setControlsOpen] = useState(false);
-  const controlsRef = useRef<HTMLDivElement>(null);
+  const [tableState, setTableState] = useState<DatabaseTableState>({});
+  const [tableStateVersion, setTableStateVersion] = useState(0);
+  const [showAgentPane, setShowAgentPane] = useState(false);
+  const [agentInput, setAgentInput] = useState('');
 
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (controlsRef.current && !controlsRef.current.contains(e.target as Node)) {
-        setControlsOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    onAgentPaneOpenChange?.(showAgentPane);
+    return () => onAgentPaneOpenChange?.(false);
+  }, [onAgentPaneOpenChange, showAgentPane]);
 
-  function handleColSort(col: SortCol) {
-    if (sortCol === col) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortCol(col);
-      setSortDir(col === 'activity' ? 'desc' : 'asc');
-    }
-  }
-
-  function setGridSort(col: SortCol) {
-    setSortCol(col);
-    setSortDir(col === 'activity' ? 'desc' : 'asc');
-  }
-
-  function toggleTypeFilter(value: WorkspaceType) {
-    setTypeFilters((prev) => {
-      const has = prev.includes(value);
-      if (has) {
-        // Keep at least one type selected.
-        if (prev.length === 1) return prev;
-        return prev.filter((v) => v !== value);
-      }
-      return [...prev, value];
-    });
-  }
-
-  const allTypesSelected = typeFilters.length === ALL_TYPES.length;
-  const isCustomized =
-    !allTypesSelected ||
-    selectedContributorNames.length > 0 ||
-    (view === 'grid' && (sortCol !== 'activity' || sortDir !== 'desc'));
+  useEffect(() => {
+    const root = document.querySelector('[data-workspaces-tab-root]') as HTMLElement | null;
+    const table = document.querySelector('[data-workspaces-table-wrap]') as HTMLElement | null;
+    const headerCount = table?.querySelectorAll('thead th').length ?? null;
+    // #region agent log
+    fetch('http://127.0.0.1:7870/ingest/3980ba0b-2c70-4db9-9b3e-8d661282845b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'752e2f'},body:JSON.stringify({sessionId:'752e2f',runId:'pre-fix',hypothesisId:'H2-H3-H4',location:'WorkspacesTab.tsx:53',message:'workspaces tab layout state',data:{teamId,view,showAgentPane,windowWidth:window.innerWidth,rootWidth:root?.getBoundingClientRect().width ?? null,tableWrapWidth:table?.getBoundingClientRect().width ?? null,headerCount,visibleColumns:tableState.visibleColumnIds ?? null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showAgentPane, tableState.visibleColumnIds, teamId, view]);
 
   const baseTeamWorkspaces = useMemo(() => {
     return getAccessibleTeamWorkspaces({
@@ -120,284 +65,362 @@ export function WorkspacesTab({ teamId, isMember, isTeamOpen = true }: Workspace
     });
   }, [workspaces, teamId, isMember, isTeamOpen]);
 
-  const contributorOptions = useMemo(() => {
-    const byName = new Map<string, { name: string; initials: string; avatarColor: string }>();
-    baseTeamWorkspaces.forEach((w) => {
-      w.contributors.forEach((c) => {
-        if (!byName.has(c.name)) {
-          byName.set(c.name, {
-            name: c.name,
-            initials: c.initials,
-            avatarColor: c.avatarColor,
-          });
-        }
-      });
-    });
-    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [baseTeamWorkspaces]);
-
-  const shownContributorOptions = useMemo(() => {
-    if (!contributorSearch.trim()) return contributorOptions;
-    const q = contributorSearch.toLowerCase();
-    return contributorOptions.filter((c) => c.name.toLowerCase().includes(q));
-  }, [contributorOptions, contributorSearch]);
-
-  function toggleContributor(name: string) {
-    setSelectedContributorNames((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
-    );
+  function applyAgentPrompt(input: string) {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    const interpreted = parseWorkspacesSemanticInput(trimmed);
+    const hasFilters =
+      interpreted.filters !== undefined && Object.keys(interpreted.filters).length > 0;
+    const resolvedSearch =
+      interpreted.search !== undefined ? interpreted.search : hasFilters ? '' : trimmed;
+    setTableState((current) => ({
+      ...current,
+      search: resolvedSearch,
+      filters: interpreted.filters ?? current.filters ?? {},
+    }));
+    setTableStateVersion((current) => current + 1);
+    setAgentInput('');
   }
 
-  const teamWorkspaces = useMemo(() => {
-    let result = baseTeamWorkspaces;
+  const tableRows = useMemo(
+    () =>
+      baseTeamWorkspaces.map((workspace) => {
+        const ownerTeam = teams.find((team) => team.id === workspace.teamId);
+        const accessLabel =
+          workspace.type === 'internal'
+            ? 'Internal'
+            : workspace.type === 'partner'
+              ? 'Partner'
+              : 'Public';
+        const roleLabel = workspace.yourRole.charAt(0).toUpperCase() + workspace.yourRole.slice(1);
+        const gitConnected = workspace.gitRepo ? 'Connected' : 'Not connected';
+        const activityHours = Math.round(
+          (Date.now() - new Date(workspace.lastActivityTimestamp).getTime()) / (1000 * 60 * 60)
+        );
+        return {
+          ...workspace,
+          ownerTeamName: ownerTeam?.name ?? 'Team',
+          accessLabel,
+          roleLabel,
+          gitConnected,
+          activityHours,
+        };
+      }),
+    [baseTeamWorkspaces, teams]
+  );
+  const gridRows = useMemo(() => {
+    const search = tableState.search?.trim().toLowerCase() ?? '';
+    const accessFilter = Array.isArray(tableState.filters?.access) ? tableState.filters?.access : [];
+    const roleFilter = Array.isArray(tableState.filters?.role) ? tableState.filters?.role : [];
+    const gitFilter = Array.isArray(tableState.filters?.gitConnected)
+      ? tableState.filters?.gitConnected
+      : [];
+    const starredFilter = Array.isArray(tableState.filters?.actions) ? tableState.filters?.actions : [];
+    return tableRows.filter((row) => {
+      if (search && !`${row.name} ${row.accessLabel} ${row.roleLabel}`.toLowerCase().includes(search)) {
+        return false;
+      }
+      if (accessFilter.length > 0 && !accessFilter.includes(row.accessLabel)) return false;
+      if (roleFilter.length > 0 && !roleFilter.includes(row.roleLabel)) return false;
+      if (gitFilter.length > 0 && !gitFilter.includes(row.gitConnected)) return false;
+      if (starredFilter.length > 0 && !starredFilter.includes(String(row.isStarred))) return false;
+      return true;
+    });
+  }, [tableRows, tableState.filters, tableState.search]);
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((w) => w.name.toLowerCase().includes(q));
-    }
+  const columns: DatabaseTableColumn<(typeof tableRows)[number]>[] = [
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (row) => <WorkspaceNameCell workspace={row} />,
+      getValue: (row) => row.name,
+      width: '42%',
+    },
+    {
+      id: 'contributorsCount',
+      header: 'Contributors',
+      accessor: (row) => (
+        <ContributorsPopover
+          contributors={row.contributors}
+          total={row.contributorsCount}
+          triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+        />
+      ),
+      getValue: (row) => row.contributorsCount,
+      width: '9%',
+    },
+    {
+      id: 'collectionsCount',
+      header: 'Collections',
+      accessor: (row) => (
+        <CollectionsPopover
+          collections={row.collections}
+          total={row.collectionsCount}
+          triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+        />
+      ),
+      getValue: (row) => row.collectionsCount,
+      width: '9%',
+    },
+    {
+      id: 'activity',
+      header: 'Activity',
+      accessor: (row) =>
+        formatDistanceToNow(new Date(row.lastActivityTimestamp), { addSuffix: true }).replace(
+          /^about /,
+          ''
+        ),
+      getValue: (row) => row.activityHours,
+      width: '9%',
+    },
+    { id: 'access', header: 'Access', accessor: (row) => row.accessLabel, getValue: (row) => row.accessLabel, width: '8%' },
+    { id: 'role', header: 'Role', accessor: (row) => row.roleLabel, getValue: (row) => row.roleLabel, width: '8%' },
+    {
+      id: 'gitConnected',
+      header: 'Git',
+      accessor: (row) =>
+        row.gitRepo ? (
+          <span className="block truncate whitespace-nowrap" title={row.gitRepo}>
+            {row.gitRepo}
+          </span>
+        ) : (
+          '-'
+        ),
+      getValue: (row) => row.gitConnected,
+      width: '12%',
+    },
+    {
+      id: 'actions',
+      header: '',
+      accessor: (row) => <WorkspaceActionsCell workspace={row} />,
+      getValue: (row) => row.isStarred,
+      align: 'right',
+      width: '6%',
+      isHideable: false,
+    },
+  ];
 
-    result = result.filter((w) => typeFilters.includes(w.type));
-    if (selectedContributorNames.length > 0) {
-      result = result.filter((w) =>
-        w.contributors.some((c) => selectedContributorNames.includes(c.name))
-      );
-    }
-
-    return sortWorkspaces(result, sortCol, sortDir);
-  }, [baseTeamWorkspaces, search, typeFilters, selectedContributorNames, sortCol, sortDir]);
+  const viewToggleControl = (
+    <div className="inline-flex h-8 w-16 overflow-hidden rounded border border-gray-200">
+      <button
+        onClick={() => setView('list')}
+        className={`inline-flex h-full w-1/2 items-center justify-center border-r border-gray-200 ${
+          view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+        }`}
+        title="List view"
+      >
+        <List size={12} />
+      </button>
+      <button
+        onClick={() => setView('grid')}
+        className={`inline-flex h-full w-1/2 items-center justify-center ${
+          view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+        }`}
+        title="Grid view"
+      >
+        <LayoutGrid size={12} />
+      </button>
+    </div>
+  );
+  const askAiControl = (
+    <button
+      onClick={() => setShowAgentPane(true)}
+      className="inline-flex h-8 items-center gap-1 rounded border border-gray-200 px-2 text-xs text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+    >
+      <Sparkles size={12} />
+      Ask AI
+    </button>
+  );
 
   return (
-    <div>
-      {/* Controls */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        {/* Search */}
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search workspaces…"
-            className="input-base pl-7 w-48"
+    <div data-workspaces-tab-root>
+      <div data-workspaces-table-wrap>
+        {!isMember ? (
+          <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-700">
+            You are seeing the workspaces you can access in this team.
+          </div>
+        ) : null}
+
+        {view === 'list' ? (
+          <DatabaseTable
+            rows={tableRows}
+            columns={columns}
+            getRowId={(row) => row.id}
+            defaultVisibleColumnIds={columns.map((column) => column.id)}
+            searchableColumnIds={['name', 'access', 'role', 'gitConnected']}
+            filterableColumnIds={['access', 'role', 'gitConnected', 'actions']}
+            filterSelectionModeByColumnId={{ access: 'multi', role: 'multi', gitConnected: 'single', actions: 'single' }}
+            filterOptionsByColumnId={{
+              access: WORKSPACES_ACCESS_OPTIONS,
+              role: WORKSPACES_ROLE_OPTIONS,
+              gitConnected: WORKSPACES_GIT_OPTIONS,
+              actions: STARRED_OPTIONS,
+            }}
+            filterSectionLabelByColumnId={{
+              access: 'Type',
+              role: 'Role',
+              gitConnected: 'Connected with Git',
+              actions: 'Starred',
+            }}
+            initialState={tableState}
+            stateVersion={tableStateVersion}
+            onStateChange={(state) => setTableState(state)}
+            emptyStateText="No accessible workspaces found."
+            enableRowSelection
+            bulkActions={[
+              { id: 'star', label: 'Star selected' },
+              { id: 'unstar', label: 'Unstar selected' },
+              { id: 'export', label: 'Export' },
+            ]}
+            aiControl={askAiControl}
+            rightControls={
+              <div className="ml-auto flex items-center gap-2">
+                {isMember ? (
+                  <button
+                    onClick={() => addToast('Create workspace flow coming soon', 'info')}
+                    className="btn-primary inline-flex h-8 items-center px-3 text-xs"
+                  >
+                    Create workspace
+                  </button>
+                ) : null}
+                {viewToggleControl}
+              </div>
+            }
           />
-        </div>
-
-        {/* Merged filter + sort control */}
-        <div ref={controlsRef} className="relative">
-          <button
-            onClick={() => setControlsOpen(!controlsOpen)}
-            title="Filter & sort"
-            className={`relative flex items-center justify-center p-1.5 rounded transition-colors ${
-              controlsOpen
-                ? 'bg-gray-100 text-gray-800'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-            }`}
-          >
-            <SlidersHorizontal size={13} />
-            {isCustomized && (
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />
-            )}
-          </button>
-
-          {controlsOpen && (
-            <div className="absolute left-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-              <p className="px-3 pt-1.5 pb-0.5 text-2xs font-semibold text-gray-400">Show</p>
-              {TYPE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => toggleTypeFilter(opt.value)}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${typeFilters.includes(opt.value) ? 'font-medium text-gray-900' : 'text-gray-600'}`}
-                >
-                  <span className="w-3 flex-shrink-0">
-                    {typeFilters.includes(opt.value) && <Check size={11} className="text-gray-700" />}
-                  </span>
-                  {opt.label}
-                </button>
-              ))}
-
-              {view === 'grid' && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
-                  <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400">Sort by</p>
-                  {SORT_OPTIONS.map((opt) => (
+        ) : gridRows.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-sm">No accessible workspaces found</div>
+        ) : (
+          <>
+            <TableGridControls
+              search={tableState.search ?? ''}
+              onSearchChange={(value) => setTableState((current) => ({ ...current, search: value }))}
+              filterableColumnIds={['access', 'role', 'gitConnected', 'actions']}
+              filters={tableState.filters ?? {}}
+              onFilterChange={(columnId, value) =>
+                setTableState((current) => ({
+                  ...current,
+                  filters: {
+                    ...(current.filters ?? {}),
+                    [columnId]: value,
+                  },
+                }))
+              }
+              filterOptionsByColumnId={{
+                access: WORKSPACES_ACCESS_OPTIONS,
+                role: WORKSPACES_ROLE_OPTIONS,
+                gitConnected: WORKSPACES_GIT_OPTIONS,
+                actions: STARRED_OPTIONS,
+              }}
+              filterSectionLabelByColumnId={{
+                access: 'Type',
+                role: 'Role',
+                gitConnected: 'Connected with Git',
+                actions: 'Starred',
+              }}
+              columns={columns}
+              aiControl={askAiControl}
+              rightControls={
+                <div className="ml-auto flex items-center gap-2">
+                  {isMember ? (
                     <button
-                      key={opt.value}
-                      onClick={() => setGridSort(opt.value)}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${sortCol === opt.value ? 'font-medium text-gray-900' : 'text-gray-600'}`}
+                      onClick={() => addToast('Create workspace flow coming soon', 'info')}
+                      className="btn-primary inline-flex h-8 items-center px-3 text-xs"
                     >
-                      <span className="w-3 flex-shrink-0">
-                        {sortCol === opt.value && <Check size={11} className="text-gray-700" />}
-                      </span>
-                      {opt.label}
+                      Create workspace
                     </button>
-                  ))}
-                </>
-              )}
-
-              <div className="border-t border-gray-100 my-1" />
-              <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400">Contributors</p>
-              <div className="px-3 pb-1">
-                <div className="relative">
-                  <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    value={contributorSearch}
-                    onChange={(e) => setContributorSearch(e.target.value)}
-                    placeholder="Search"
-                    className="w-full pl-6 pr-2 py-1 text-xs border border-gray-200 rounded bg-gray-50 outline-none focus:border-gray-400 focus:bg-white placeholder-gray-400"
-                  />
+                  ) : null}
+                  {viewToggleControl}
                 </div>
-              </div>
-              <div className="max-h-44 overflow-y-auto py-1">
-                {shownContributorOptions.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-gray-400 text-center">No matches</p>
-                ) : (
-                  shownContributorOptions.map((c) => (
-                    <button
-                      key={c.name}
-                      onClick={() => toggleContributor(c.name)}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${selectedContributorNames.includes(c.name) ? 'font-medium text-gray-900' : 'text-gray-600'}`}
-                    >
-                      <span className="w-3 flex-shrink-0">
-                        {selectedContributorNames.includes(c.name) && (
-                          <Check size={11} className="text-gray-700" />
-                        )}
-                      </span>
-                      <Avatar initials={c.initials} color={c.avatarColor} size="xs" />
-                      <span className="truncate">{c.name}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-              {selectedContributorNames.length > 0 && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
+              }
+            />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {gridRows.map((workspace) => (
+                <WorkspaceCard key={workspace.id} workspace={workspace} />
+              ))}
+              {isMember ? (
+                <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
+                  <p className="text-xs text-gray-600">Need another workspace?</p>
                   <button
-                    onClick={() => setSelectedContributorNames([])}
-                    className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium"
+                    onClick={() => addToast('Create workspace flow coming soon', 'info')}
+                    className="btn-secondary text-2xs px-2 py-1"
                   >
-                    Clear selected
+                    Create workspace
                   </button>
-                </>
-              )}
-
-              {isCustomized && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
-                  <button
-                    onClick={() => {
-                      setTypeFilters(ALL_TYPES);
-                      setSelectedContributorNames([]);
-                      setContributorSearch('');
-                      setSortCol('activity');
-                      setSortDir('desc');
-                      setControlsOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"
-                  >
-                    <span className="w-3 flex-shrink-0" />
-                    Reset
-                  </button>
-                </>
-              )}
+                </div>
+              ) : null}
             </div>
-          )}
-        </div>
-
-        {/* Right-side actions */}
-        {isMember && (
-          <button
-            onClick={() => addToast('Create workspace flow coming soon', 'info')}
-            className="btn-primary text-2xs px-2.5 py-1.5 ml-auto"
-          >
-            Create workspace
-          </button>
+          </>
         )}
-        <div className={`flex items-center border border-gray-200 rounded overflow-hidden ${isMember ? '' : 'ml-auto'}`}>
-          <button
-            onClick={() => setView('list')}
-            className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="List view"
-          >
-            <List size={13} />
-          </button>
-          <button
-            onClick={() => setView('grid')}
-            className={`p-1.5 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="Grid view"
-          >
-            <LayoutGrid size={13} />
-          </button>
-        </div>
       </div>
 
-      {/* Non-member notice */}
-      {!isMember && (
-        <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded text-xs text-blue-700">
-          You are seeing the workspaces you can access in this team.
-        </div>
-      )}
-
-      {/* Column headers with sort (list view) */}
-      {view === 'list' && teamWorkspaces.length > 0 && (
-        <div className="flex items-center px-4 py-1.5 border-b border-gray-200">
-          <button
-            onClick={() => handleColSort('name')}
-            className="flex items-center flex-1 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Name <SortIcon col="name" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleColSort('contributors')}
-            className="flex items-center w-32 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Contributors <SortIcon col="contributors" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleColSort('collections')}
-            className="flex items-center w-24 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Collections <SortIcon col="collections" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleColSort('activity')}
-            className="flex items-center w-36 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Activity <SortIcon col="activity" active={sortCol} dir={sortDir} />
-          </button>
-          <div className="w-28 text-2xs font-medium text-gray-500">Your role</div>
-          {/* Actions spacer */}
-          <div className="w-14" />
-        </div>
-      )}
-
-      {/* Results */}
-      {teamWorkspaces.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 text-sm">
-          No accessible workspaces found
-        </div>
-      ) : view === 'list' ? (
-        <div className="divide-y divide-gray-100">
-          {teamWorkspaces.map((ws) => (
-            <WorkspaceRow key={ws.id} workspace={ws} />
-          ))}
-        </div>
+      {showAgentPane ? (
+        <TableAgentPane
+          suggestions={['Show internal and public workspaces', 'Show starred workspaces', 'Show git connected workspaces']}
+          value={agentInput}
+          onChange={setAgentInput}
+          onSubmit={applyAgentPrompt}
+          onClose={() => setShowAgentPane(false)}
+        />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {teamWorkspaces.map((ws) => (
-            <WorkspaceCard key={ws.id} workspace={ws} />
-          ))}
-          {isMember && (
-            <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
-              <p className="text-xs text-gray-600">Need another workspace?</p>
-              <button
-                onClick={() => addToast('Create workspace flow coming soon', 'info')}
-                className="btn-secondary text-2xs px-2 py-1"
-              >
-                Create workspace
-              </button>
-            </div>
-          )}
-        </div>
+        <button
+          onClick={() => setShowAgentPane(true)}
+          className="fixed bottom-4 right-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-gray-300 hover:text-gray-700"
+          aria-label="Open assistant"
+        >
+          <Sparkles size={14} />
+        </button>
       )}
     </div>
   );
 }
+
+function WorkspaceNameCell({ workspace }: { workspace: Workspace & { ownerTeamName: string } }) {
+  const icon =
+    workspace.type === 'public'
+      ? { Icon: Globe, iconClass: 'text-green-700', bg: 'bg-green-100' }
+      : workspace.type === 'partner'
+        ? { Icon: Handshake, iconClass: 'text-purple-700', bg: 'bg-purple-100' }
+        : workspace.internalAccess === 'org-wide'
+          ? { Icon: Building2, iconClass: 'text-blue-700', bg: 'bg-blue-100' }
+          : workspace.internalAccess === 'team-wide'
+            ? { Icon: Users, iconClass: 'text-indigo-700', bg: 'bg-indigo-100' }
+            : { Icon: Lock, iconClass: 'text-slate-700', bg: 'bg-slate-200' };
+  const metaLabel =
+    workspace.type !== 'internal'
+      ? workspace.type === 'public'
+        ? 'Public'
+        : 'Partner'
+      : workspace.internalAccess === 'org-wide'
+        ? 'Internal • Postman'
+        : workspace.internalAccess === 'team-wide'
+          ? `Internal • ${workspace.ownerTeamName}`
+          : 'Internal • Invite only';
+  const { Icon } = icon;
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${icon.bg}`}>
+        <Icon size={13} className={icon.iconClass} />
+      </div>
+      <div className="min-w-0 relative z-10 group/peek hover:z-30">
+        <p className="text-xs font-medium text-gray-900 truncate">{workspace.name}</p>
+        <WorkspacePeekCard workspace={workspace} ownerTeamName={workspace.ownerTeamName} align="right" />
+        <p className="text-2xs text-gray-400 truncate">{metaLabel}</p>
+      </div>
+    </div>
+  );
+}
+
+function WorkspaceActionsCell({ workspace }: { workspace: Workspace }) {
+  const { toggleStar } = useWorkspacesStore();
+  return (
+    <div className="flex justify-end">
+      <button
+        onClick={() => toggleStar(workspace.id)}
+        className={`p-1 rounded transition-colors ${workspace.isStarred ? 'text-yellow-400' : 'text-gray-400 hover:text-yellow-400'}`}
+      >
+        <Star size={12} fill={workspace.isStarred ? 'currentColor' : 'none'} />
+      </button>
+    </div>
+  );
+}
+

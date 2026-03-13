@@ -77,7 +77,7 @@ export function WorkspaceRow({ workspace }: WorkspaceRowProps) {
         <div className={`w-6 h-6 rounded flex items-center justify-center flex-shrink-0 ${accessData.iconBg}`}>
           <AccessIcon size={13} className={accessData.iconClass} />
         </div>
-        <div className="min-w-0 relative group/peek">
+        <div className="min-w-0 relative z-10 group/peek hover:z-30">
           <p className="text-xs font-medium text-gray-900 truncate">{workspace.name}</p>
           <WorkspacePeekCard
             workspace={workspace}

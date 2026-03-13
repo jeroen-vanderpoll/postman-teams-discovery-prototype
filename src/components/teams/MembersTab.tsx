@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, ChevronsUpDown, LayoutGrid, List, SlidersHorizontal, Check } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { LayoutGrid, List, Sparkles, Trash2 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
+import { DatabaseTable, type DatabaseTableColumn, type DatabaseTableState } from '../ui/DatabaseTable';
+import { TableAgentPane } from '../ui/TableAgentPane';
+import { TableGridControls } from '../ui/TableGridControls';
 import { buildTeamMemberPreviewList } from '../../utils/teamMembers';
+import {
+  MEMBERS_MEMBERSHIP_OPTIONS,
+  MEMBERS_ROLE_OPTIONS,
+  parseMembersSemanticInput,
+} from '../../utils/tableSemantics';
 import type { MemberPreview } from '../../types';
 
 type Membership = 'Member' | 'Collaborator';
@@ -12,31 +20,8 @@ type Member = MemberPreview & {
   role: Role;
   isCurrentUser?: boolean;
 };
-type SortCol = 'name' | 'membership' | 'role';
-type SortDir = 'asc' | 'desc';
 
-const MEMBERSHIP_RANK: Record<Membership, number> = { Collaborator: 0, Member: 1 };
-const ROLE_RANK: Record<Role, number> = { Manager: 0, Developer: 1 };
 const VIEW_STORAGE_KEY = 'team-members-view-mode-v2';
-const DEFAULT_ROLE_FILTER: Role | 'all' = 'all';
-const DEFAULT_MEMBERSHIP_FILTER: Membership | 'all' = 'all';
-
-function SortIcon({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
-  if (active !== col) return <ChevronsUpDown size={11} className="text-gray-400 ml-0.5" />;
-  return dir === 'asc'
-    ? <ChevronUp size={11} className="text-gray-700 ml-0.5" />
-    : <ChevronDown size={11} className="text-gray-700 ml-0.5" />;
-}
-
-function sortMembers(members: Member[], col: SortCol, dir: SortDir): Member[] {
-  return [...members].sort((a, b) => {
-    let v = 0;
-    if (col === 'name') v = a.name.localeCompare(b.name);
-    else if (col === 'membership') v = MEMBERSHIP_RANK[a.membership] - MEMBERSHIP_RANK[b.membership];
-    else if (col === 'role') v = ROLE_RANK[a.role] - ROLE_RANK[b.role];
-    return dir === 'asc' ? v : -v;
-  });
-}
 
 interface MembersTabProps {
   teamId: string;
@@ -49,6 +34,7 @@ interface MembersTabProps {
   onJoin: () => void;
   onRequestToJoin: () => void;
   onInvitePeople: () => void;
+  onAgentPaneOpenChange?: (open: boolean) => void;
 }
 
 function toHandle(name: string): string {
@@ -112,43 +98,50 @@ export function MembersTab({
   onJoin,
   onRequestToJoin,
   onInvitePeople,
+  onAgentPaneOpenChange,
 }: MembersTabProps) {
-  const [search, setSearch] = useState('');
-  const [sortCol, setSortCol] = useState<SortCol>('membership');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [roleFilter, setRoleFilter] = useState<Role | 'all'>(DEFAULT_ROLE_FILTER);
-  const [membershipFilter, setMembershipFilter] = useState<Membership | 'all'>(DEFAULT_MEMBERSHIP_FILTER);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<'list' | 'grid'>(
     () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as 'list' | 'grid' | null) ?? 'list'
   );
-  const filtersRef = useRef<HTMLDivElement>(null);
+  const [tableState, setTableState] = useState<DatabaseTableState>({});
+  const [tableStateVersion, setTableStateVersion] = useState(0);
+  const [showAgentPane, setShowAgentPane] = useState(false);
+  const [agentInput, setAgentInput] = useState('');
 
   useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (filtersRef.current && !filtersRef.current.contains(e.target as Node)) {
-        setFiltersOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+    onAgentPaneOpenChange?.(showAgentPane);
+    return () => onAgentPaneOpenChange?.(false);
+  }, [onAgentPaneOpenChange, showAgentPane]);
 
-  const isCustomized =
-    roleFilter !== DEFAULT_ROLE_FILTER || membershipFilter !== DEFAULT_MEMBERSHIP_FILTER;
+  useEffect(() => {
+    const root = document.querySelector('[data-members-tab-root]') as HTMLElement | null;
+    const table = document.querySelector('[data-members-table-wrap]') as HTMLElement | null;
+    const headerCount = table?.querySelectorAll('thead th').length ?? null;
+    // #region agent log
+    fetch('http://127.0.0.1:7870/ingest/3980ba0b-2c70-4db9-9b3e-8d661282845b',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'752e2f'},body:JSON.stringify({sessionId:'752e2f',runId:'pre-fix',hypothesisId:'H2-H3-H4',location:'MembersTab.tsx:102',message:'members tab layout state',data:{teamId,view,showAgentPane,windowWidth:window.innerWidth,rootWidth:root?.getBoundingClientRect().width ?? null,tableWrapWidth:table?.getBoundingClientRect().width ?? null,headerCount,visibleColumns:tableState.visibleColumnIds ?? null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [showAgentPane, tableState.visibleColumnIds, teamId, view]);
 
   function setViewAndPersist(next: 'list' | 'grid') {
     setView(next);
     sessionStorage.setItem(VIEW_STORAGE_KEY, next);
   }
 
-  function handleSort(col: SortCol) {
-    if (sortCol === col) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortCol(col);
-      setSortDir('asc');
-    }
+  function applyAgentPrompt(input: string) {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    const interpreted = parseMembersSemanticInput(trimmed);
+    const hasFilters =
+      interpreted.filters !== undefined && Object.keys(interpreted.filters).length > 0;
+    const resolvedSearch =
+      interpreted.search !== undefined ? interpreted.search : hasFilters ? '' : trimmed;
+    setTableState((current) => ({
+      ...current,
+      search: resolvedSearch,
+      filters: interpreted.filters ?? current.filters ?? {},
+    }));
+    setTableStateVersion((current) => current + 1);
+    setAgentInput('');
   }
 
   const allTeamMembers = buildTeamMembers(
@@ -158,223 +151,238 @@ export function MembersTab({
     isMember,
     currentUserMembership
   );
-  const visibleMembers = allTeamMembers;
+  const orderedMembers = useMemo(() => {
+    const currentUser = allTeamMembers.find((member) => member.isCurrentUser);
+    const others = allTeamMembers.filter((member) => !member.isCurrentUser);
+    return currentUser ? [currentUser, ...others] : allTeamMembers;
+  }, [allTeamMembers]);
+  const gridRows = useMemo(() => {
+    const search = tableState.search?.trim().toLowerCase() ?? '';
+    const roleFilter = Array.isArray(tableState.filters?.role) ? tableState.filters?.role : [];
+    const membershipFilter = Array.isArray(tableState.filters?.membership)
+      ? tableState.filters?.membership
+      : [];
+    return orderedMembers.filter((member) => {
+      if (search && !`${member.name} ${member.handle} ${member.role} ${member.membership}`.toLowerCase().includes(search)) {
+        return false;
+      }
+      if (roleFilter.length > 0 && !roleFilter.includes(member.role)) return false;
+      if (membershipFilter.length > 0 && !membershipFilter.includes(member.membership)) return false;
+      return true;
+    });
+  }, [orderedMembers, tableState.filters, tableState.search]);
 
-  const filtered = visibleMembers.filter(
-    (m) =>
-      (
-        !search.trim() ||
-        m.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.handle.toLowerCase().includes(search.toLowerCase())
-      ) &&
-      (roleFilter === 'all' || m.role === roleFilter) &&
-      (membershipFilter === 'all' || m.membership === membershipFilter)
+  const columns: DatabaseTableColumn<Member>[] = [
+    {
+      id: 'name',
+      header: 'Name',
+      accessor: (row) => (
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Avatar initials={row.initials} color={row.avatarColor} size="sm" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-gray-900">
+              {row.name}
+              {row.isCurrentUser ? <span className="text-gray-500 font-normal"> (You)</span> : null}
+            </p>
+            <p className="text-2xs text-gray-400 truncate">{row.handle}</p>
+          </div>
+        </div>
+      ),
+      getValue: (row) => row.name,
+      width: '46%',
+    },
+    { id: 'role', header: 'Role', accessor: (row) => row.role, getValue: (row) => row.role, width: '22%' },
+    {
+      id: 'membership',
+      header: 'Membership',
+      accessor: (row) => row.membership,
+      getValue: (row) => row.membership,
+      width: '22%',
+    },
+    {
+      id: 'actions',
+      header: '',
+      accessor: () => (
+        <div className="flex justify-end">
+          <button className="rounded p-1 text-gray-400 hover:bg-gray-50 hover:text-red-600" aria-label="Remove member">
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ),
+      getValue: (row) => row.id,
+      align: 'right',
+      width: '10%',
+      isHideable: false,
+      isSortable: false,
+    },
+  ];
+
+  const askAiControl = (
+    <button
+      onClick={() => setShowAgentPane(true)}
+      className="inline-flex h-8 items-center gap-1 rounded border border-gray-200 px-2 text-xs text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+    >
+      <Sparkles size={12} />
+      Ask AI
+    </button>
+  );
+  const viewToggleControl = (
+    <div className="inline-flex h-8 w-16 overflow-hidden rounded border border-gray-200">
+      <button
+        onClick={() => setViewAndPersist('list')}
+        className={`inline-flex h-full w-1/2 items-center justify-center border-r border-gray-200 ${
+          view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+        }`}
+        title="List view"
+      >
+        <List size={12} />
+      </button>
+      <button
+        onClick={() => setViewAndPersist('grid')}
+        className={`inline-flex h-full w-1/2 items-center justify-center ${
+          view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+        }`}
+        title="Card view"
+      >
+        <LayoutGrid size={12} />
+      </button>
+    </div>
   );
 
-  const shown = sortMembers(filtered, sortCol, sortDir);
-  const currentUser = shown.find((m) => m.isCurrentUser);
-  const others = shown.filter((m) => !m.isCurrentUser);
-  const ordered = currentUser ? [currentUser, ...others] : shown;
-
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search members…"
-            className="input-base pl-7 w-48"
-          />
-        </div>
-        <div ref={filtersRef} className="relative">
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            title="Filter members"
-            className={`relative flex items-center justify-center p-1.5 rounded transition-colors ${
-              filtersOpen
-                ? 'bg-gray-100 text-gray-800'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
-            }`}
-          >
-            <SlidersHorizontal size={13} />
-            {isCustomized && <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-orange-500" />}
-          </button>
-          {filtersOpen && (
-            <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
-              <p className="px-3 pt-1.5 pb-0.5 text-2xs font-semibold text-gray-400">Role</p>
-              {(['all', 'Manager', 'Developer'] as const).map((value) => (
-                <button
-                  key={`role-${value}`}
-                  onClick={() => setRoleFilter(value)}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${
-                    roleFilter === value ? 'font-medium text-gray-900' : 'text-gray-600'
-                  }`}
-                >
-                  <span className="w-3 flex-shrink-0">
-                    {roleFilter === value && <Check size={11} className="text-gray-700" />}
-                  </span>
-                  {value === 'all' ? 'All roles' : value}
-                </button>
-              ))}
-
-              <div className="border-t border-gray-100 my-1" />
-              <p className="px-3 pt-1 pb-0.5 text-2xs font-semibold text-gray-400">Membership</p>
-              {(['all', 'Collaborator', 'Member'] as const).map((value) => (
-                <button
-                  key={`membership-${value}`}
-                  onClick={() => setMembershipFilter(value)}
-                  className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${
-                    membershipFilter === value ? 'font-medium text-gray-900' : 'text-gray-600'
-                  }`}
-                >
-                  <span className="w-3 flex-shrink-0">
-                    {membershipFilter === value && <Check size={11} className="text-gray-700" />}
-                  </span>
-                  {value === 'all' ? 'All memberships' : value}
-                </button>
-              ))}
-
-              {isCustomized && (
-                <>
-                  <div className="border-t border-gray-100 my-1" />
+    <div data-members-tab-root>
+      <div data-members-table-wrap>
+        {view === 'list' ? (
+          <DatabaseTable
+            rows={orderedMembers}
+            columns={columns}
+            getRowId={(row) => row.id}
+            defaultVisibleColumnIds={columns.map((column) => column.id)}
+            searchableColumnIds={['name', 'role', 'membership']}
+            filterableColumnIds={['role', 'membership']}
+            filterSelectionModeByColumnId={{ role: 'multi', membership: 'multi' }}
+            filterOptionsByColumnId={{
+              role: MEMBERS_ROLE_OPTIONS,
+              membership: MEMBERS_MEMBERSHIP_OPTIONS,
+            }}
+            filterSectionLabelByColumnId={{ role: 'Role', membership: 'Membership' }}
+            initialState={tableState}
+            stateVersion={tableStateVersion}
+            onStateChange={(state) => setTableState(state)}
+            emptyStateText="No members match current criteria."
+            enableRowSelection
+            bulkActions={[{ id: 'remove', label: 'Remove', danger: true }]}
+            aiControl={askAiControl}
+            rightControls={
+              <div className="ml-auto flex items-center gap-2">
+                {isMember ? (
                   <button
-                    onClick={() => {
-                      setRoleFilter(DEFAULT_ROLE_FILTER);
-                      setMembershipFilter(DEFAULT_MEMBERSHIP_FILTER);
-                      setFiltersOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-xs text-blue-600 hover:bg-blue-50 font-medium flex items-center gap-2"
+                    onClick={onInvitePeople}
+                    className="btn-primary inline-flex h-8 items-center px-3 text-xs"
                   >
-                    <span className="w-3 flex-shrink-0" />
-                    Reset
+                    Invite people
                   </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-        {isMember && (
-          <button
-            onClick={onInvitePeople}
-            className="btn-primary text-2xs px-2.5 py-1.5 ml-auto"
-          >
-            Invite people
-          </button>
-        )}
-        <div className={`flex items-center border border-gray-200 rounded overflow-hidden ${isMember ? '' : 'ml-auto'}`}>
-          <button
-            onClick={() => setViewAndPersist('list')}
-            className={`p-1.5 transition-colors ${view === 'list' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="List view"
-          >
-            <List size={13} />
-          </button>
-          <button
-            onClick={() => setViewAndPersist('grid')}
-            className={`p-1.5 transition-colors ${view === 'grid' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-            title="Card view"
-          >
-            <LayoutGrid size={13} />
-          </button>
-        </div>
-      </div>
-
-      {view === 'list' ? (
-      <div className="divide-y divide-gray-100">
-        {/* Header */}
-        <div className="flex items-center px-4 py-1.5 border-b border-gray-200">
-          <button
-            onClick={() => handleSort('name')}
-            className="flex items-center flex-1 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Name <SortIcon col="name" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleSort('role')}
-            className="flex items-center w-28 pl-3 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Role <SortIcon col="role" active={sortCol} dir={sortDir} />
-          </button>
-          <button
-            onClick={() => handleSort('membership')}
-            className="flex items-center w-36 pl-3 text-2xs font-medium text-gray-500 hover:text-gray-700"
-          >
-            Membership <SortIcon col="membership" active={sortCol} dir={sortDir} />
-          </button>
-          <div className="w-24" />
-        </div>
-
-        {ordered.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 text-sm">No members found</div>
+                ) : null}
+                {viewToggleControl}
+              </div>
+            }
+          />
         ) : (
-          ordered.map((m) => (
-            <div key={m.id} className="flex items-center px-4 py-2 hover:bg-gray-50">
-              <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                <Avatar initials={m.initials} color={m.avatarColor} size="sm" />
-                <div>
-                  <p className="text-xs font-medium text-gray-900">
-                    {m.name}
-                    {m.isCurrentUser && <span className="text-gray-500 font-normal"> (You)</span>}
-                  </p>
-                  <p className="text-2xs text-gray-400">{m.handle}</p>
+          <>
+            <TableGridControls
+              search={tableState.search ?? ''}
+              onSearchChange={(value) => setTableState((current) => ({ ...current, search: value }))}
+              filterableColumnIds={['role', 'membership']}
+              filters={tableState.filters ?? {}}
+              onFilterChange={(columnId, value) =>
+                setTableState((current) => ({
+                  ...current,
+                  filters: {
+                    ...(current.filters ?? {}),
+                    [columnId]: value,
+                  },
+                }))
+              }
+              filterOptionsByColumnId={{
+                role: MEMBERS_ROLE_OPTIONS,
+                membership: MEMBERS_MEMBERSHIP_OPTIONS,
+              }}
+              filterSectionLabelByColumnId={{ role: 'Role', membership: 'Membership' }}
+              columns={columns}
+              aiControl={askAiControl}
+              rightControls={
+                <div className="ml-auto flex items-center gap-2">
+                  {isMember ? (
+                    <button className="btn-primary inline-flex h-8 items-center px-3 text-xs" onClick={onInvitePeople}>
+                      Invite people
+                    </button>
+                  ) : null}
+                  {viewToggleControl}
                 </div>
-              </div>
-              <div className="w-28 pl-3">
-                <span className="text-xs text-gray-700">{m.role}</span>
-              </div>
-              <div className="w-36 pl-3">
-                <span className="text-xs text-gray-700">{m.membership}</span>
-              </div>
-              <div className="w-24" />
-            </div>
-          ))
-        )}
-      </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {ordered.map((m) => (
-            <div key={m.id} className="card px-3 py-3 flex flex-col gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <Avatar initials={m.initials} color={m.avatarColor} size="sm" />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-900 truncate">
-                    {m.name}
-                    {m.isCurrentUser && <span className="text-gray-500 font-normal"> (You)</span>}
-                  </p>
-                  <p className="text-2xs text-gray-400 truncate">{m.handle}</p>
-                  <p className="text-2xs text-gray-500 truncate">{m.role}</p>
+              }
+            />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {gridRows.map((member) => (
+                <div key={member.id} className="card px-3 py-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar initials={member.initials} color={member.avatarColor} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-900 truncate">
+                        {member.name}
+                        {member.isCurrentUser ? <span className="text-gray-500 font-normal"> (You)</span> : null}
+                      </p>
+                      <p className="text-2xs text-gray-400 truncate">{member.handle}</p>
+                      <p className="text-2xs text-gray-500 truncate">{member.role}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-          {isMember ? (
-            <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
-              <p className="text-xs text-gray-600">Grow the crew?</p>
-              <button className="btn-secondary text-2xs px-2 py-1" onClick={onInvitePeople}>
-                Invite people
-              </button>
-            </div>
-          ) : (
-            <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
-              <p className="text-xs text-gray-600">Want in on the fun?</p>
-              {isPending ? (
-                <button className="btn-secondary text-2xs px-2 py-1 opacity-60" disabled>
-                  Request sent
-                </button>
-              ) : isTeamOpen ? (
-                <button className="btn-secondary text-2xs px-2 py-1" onClick={onJoin}>
-                  Join team
-                </button>
+              ))}
+              {isMember ? (
+                <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
+                  <p className="text-xs text-gray-600">Grow the crew?</p>
+                  <button className="btn-secondary text-2xs px-2 py-1" onClick={onInvitePeople}>
+                    Invite people
+                  </button>
+                </div>
               ) : (
-                <button className="btn-secondary text-2xs px-2 py-1" onClick={onRequestToJoin}>
-                  Request to join team
-                </button>
+                <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
+                  <p className="text-xs text-gray-600">Want in on the fun?</p>
+                  {isPending ? (
+                    <button className="btn-secondary text-2xs px-2 py-1 opacity-60" disabled>
+                      Request sent
+                    </button>
+                  ) : isTeamOpen ? (
+                    <button className="btn-secondary text-2xs px-2 py-1" onClick={onJoin}>
+                      Join team
+                    </button>
+                  ) : (
+                    <button className="btn-secondary text-2xs px-2 py-1" onClick={onRequestToJoin}>
+                      Request to join team
+                    </button>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </div>
+
+      {showAgentPane ? (
+        <TableAgentPane
+          suggestions={['Show managers', 'Show collaborators', 'Show member developers']}
+          value={agentInput}
+          onChange={setAgentInput}
+          onSubmit={applyAgentPrompt}
+          onClose={() => setShowAgentPane(false)}
+        />
+      ) : (
+        <button
+          onClick={() => setShowAgentPane(true)}
+          className="fixed bottom-4 right-4 z-30 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-gray-300 hover:text-gray-700"
+          aria-label="Open assistant"
+        >
+          <Sparkles size={14} />
+        </button>
       )}
     </div>
   );
