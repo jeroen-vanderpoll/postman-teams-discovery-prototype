@@ -4,10 +4,11 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronsUpDown,
-  Columns3,
+  EyeOff,
   Info,
   ListFilter,
   Search,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 type Align = 'left' | 'right' | 'center';
@@ -155,6 +156,7 @@ export function DatabaseTable<Row>({
   });
   const [showColumnsMenu, setShowColumnsMenu] = useState(false);
   const [showFiltersMenu, setShowFiltersMenu] = useState(false);
+  const [focusView, setFocusView] = useState(false);
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
   const [resizeState, setResizeState] = useState<{
     columnId: string;
@@ -832,7 +834,7 @@ export function DatabaseTable<Row>({
         </div>
       )}
 
-      <div className={hasSelectionBar ? 'overflow-visible bg-white mt-0' : 'overflow-visible bg-white'}>
+      <div className={hasSelectionBar ? 'overflow-visible bg-white mt-0' : 'overflow-visible bg-white'} data-focus-view={focusView ? '' : undefined}>
         <table className="w-full table-fixed">
           <thead>
             <tr className="border-b border-gray-200">
@@ -951,14 +953,16 @@ export function DatabaseTable<Row>({
                   <div ref={columnsMenuRef} className="relative inline-block">
                   <button
                     onClick={() => setShowColumnsMenu((v) => !v)}
-                    className="inline-flex items-center justify-center rounded px-1 py-0.5 text-xs text-gray-400 hover:text-gray-700 mt-1.5"
-                    title="Show/hide columns"
+                    className={`inline-flex items-center justify-center rounded px-1 py-0.5 text-xs mt-1.5 ${showColumnsMenu ? 'text-gray-700' : 'text-gray-400 hover:text-gray-700'}`}
+                    title="Table preferences"
                   >
-                    <Columns3 size={12} />
+                    <SlidersHorizontal size={12} />
                   </button>
                   {showColumnsMenu && (
                     <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg">
-                      <p className="px-3 pb-1 pt-0.5 text-left text-xs font-semibold text-gray-500">Show columns</p>
+                      <div className="flex items-center justify-between px-3 pb-1 pt-0.5">
+                        <p className="text-left text-xs font-semibold text-gray-500">Show columns</p>
+                      </div>
                       {configurableColumns.map((column) => {
                         const checked = visibleColumnIds.includes(column.id);
                         return (
@@ -976,7 +980,7 @@ export function DatabaseTable<Row>({
                           </label>
                         );
                       })}
-                      <div className="mt-1 border-t border-gray-100 px-2 pt-1 text-left">
+                      <div className="mt-1 border-t border-gray-100 px-2 pt-1 pb-0.5">
                         <button
                           onClick={() => {
                             if (allConfigurableVisible) {
@@ -995,6 +999,22 @@ export function DatabaseTable<Row>({
                         >
                           {allConfigurableVisible ? 'Hide all columns' : 'Show all columns'}
                         </button>
+                      </div>
+                      <div className="border-t border-gray-100 px-3 py-1.5">
+                        <div className="flex cursor-pointer items-center justify-between gap-2">
+                          <span className="flex items-center gap-1.5 text-xs text-gray-700">
+                            <EyeOff size={11} className="text-gray-400" />
+                            Focus view
+                          </span>
+                          <button
+                            role="switch"
+                            aria-checked={focusView}
+                            onClick={() => setFocusView((v) => !v)}
+                            className={`relative inline-flex h-4 w-7 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${focusView ? 'bg-gray-800' : 'bg-gray-200'}`}
+                          >
+                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition-transform ${focusView ? 'translate-x-3' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}

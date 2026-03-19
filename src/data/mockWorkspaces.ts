@@ -191,6 +191,8 @@ const INTERNAL_TOTAL_BY_TEAM = WORKSPACES_RAW.reduce<Record<string, number>>((ac
 }, {});
 const internalSeenByTeam: Record<string, number> = {};
 
+const ACTIVE_PERCENTS = [84, 92, 56, 78, 45, 67, 38, 91, 73, 62, 88, 41, 95, 53, 70, 83, 47, 76, 60, 89, 35, 72, 65, 58, 80];
+
 export const MOCK_WORKSPACES: Workspace[] = WORKSPACES_RAW.map((workspace, index) => {
   const internalAccess =
     workspace.type === 'internal'
@@ -210,5 +212,7 @@ export const MOCK_WORKSPACES: Workspace[] = WORKSPACES_RAW.map((workspace, index
     contributors: buildContributors(workspace.contributorsCount, index + 1),
     collections: buildCollections(workspace.collectionsCount, workspace.name),
     internalAccess,
+    activeContributorsPercent: ACTIVE_PERCENTS[index % ACTIVE_PERCENTS.length],
+    activeCollectionsPercent: ACTIVE_PERCENTS[(index + 7) % ACTIVE_PERCENTS.length],
   };
 });

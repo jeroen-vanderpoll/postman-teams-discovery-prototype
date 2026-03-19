@@ -17,6 +17,12 @@
   }
 }
 
+@layer utilities {
+  [data-focus-view] [data-secondary] {
+    display: none;
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply bg-postman-orange text-white text-xs font-medium px-3 py-1.5 rounded hover:bg-postman-orange-hover transition-colors;

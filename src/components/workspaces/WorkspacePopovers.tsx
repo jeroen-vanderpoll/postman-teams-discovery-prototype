@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
-import { Users, FolderOpen, Search } from 'lucide-react';
+import { Activity, Users, FolderOpen, Search } from 'lucide-react';
 import type { WorkspaceCollection, WorkspaceContributor, WorkspaceContributorRole } from '../../types';
 
 const PAGE_SIZE = 8;
@@ -57,10 +57,12 @@ function usePopoverState() {
 export function ContributorsPopover({
   contributors,
   total,
+  status,
   triggerClassName,
 }: {
   contributors: WorkspaceContributor[];
   total: number;
+  status?: { label: string; colorClass?: string; bgClass?: string };
   triggerClassName?: string;
 }) {
   const state = usePopoverState();
@@ -86,12 +88,18 @@ export function ContributorsPopover({
         className={triggerClassName ?? 'flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors'}
       >
         <Users size={11} className="text-gray-500" />
-        <span className="font-medium">{total.toLocaleString()}</span>
+        <span className="font-medium w-[1.75rem] text-left tabular-nums">{total.toLocaleString()}</span>
+        {status && (
+          <span data-secondary className={`inline-flex items-center gap-0.5 font-normal rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
+            <Activity size={10} className="flex-shrink-0" />
+            {status.label}
+          </span>
+        )}
       </button>
 
       {state.hovered && !state.open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
-          {total.toLocaleString()} contributors
+          {total.toLocaleString()} contributors{status ? ` · ${status.label} active` : ''}
         </div>
       )}
 
@@ -146,10 +154,12 @@ export function ContributorsPopover({
 export function CollectionsPopover({
   collections,
   total,
+  status,
   triggerClassName,
 }: {
   collections: WorkspaceCollection[];
   total: number;
+  status?: { label: string; colorClass?: string; bgClass?: string };
   triggerClassName?: string;
 }) {
   const state = usePopoverState();
@@ -168,12 +178,18 @@ export function CollectionsPopover({
         className={triggerClassName ?? 'flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors'}
       >
         <FolderOpen size={11} className="text-gray-500" />
-        <span className="font-medium">{total.toLocaleString()}</span>
+        <span className="font-medium w-[1.75rem] text-left tabular-nums">{total.toLocaleString()}</span>
+        {status && (
+          <span data-secondary className={`inline-flex items-center gap-0.5 font-normal rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
+            <Activity size={10} className="flex-shrink-0" />
+            {status.label}
+          </span>
+        )}
       </button>
 
       {state.hovered && !state.open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
-          {total.toLocaleString()} collections
+          {total.toLocaleString()} collections{status ? ` · ${status.label} active` : ''}
         </div>
       )}
 

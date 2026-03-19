@@ -44,8 +44,8 @@ export const MEMBERS_ROLE_OPTIONS: DatabaseTableFilterOption[] = [
 ];
 
 export const MEMBERS_MEMBERSHIP_OPTIONS: DatabaseTableFilterOption[] = [
-  { value: 'Member', label: 'Member' },
-  { value: 'Collaborator', label: 'Collaborator' },
+  { value: 'Member', label: 'Full access' },
+  { value: 'Collaborator', label: 'Limited access' },
 ];
 
 export function parseTeamsSemanticInput(input: string): TableSemanticResult {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Building2, Globe, Handshake, LayoutGrid, List, Lock, Sparkles, Star, Users } from 'lucide-react';
+import { Building2, GitBranch, Globe, Handshake, LayoutGrid, List, Lock, Sparkles, Star, Users } from 'lucide-react';
 import { WorkspaceCard } from './WorkspaceCard';
 import { ContributorsPopover, CollectionsPopover } from './WorkspacePopovers';
 import { WorkspacePeekCard } from './WorkspacePeekCard';
@@ -134,60 +134,85 @@ export function WorkspacesTab({
       header: 'Name',
       accessor: (row) => <WorkspaceNameCell workspace={row} />,
       getValue: (row) => row.name,
-      width: '42%',
+      width: '25%',
     },
     {
       id: 'contributorsCount',
       header: 'Contributors',
-      accessor: (row) => (
-        <ContributorsPopover
-          contributors={row.contributors}
-          total={row.contributorsCount}
-          triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
-        />
-      ),
+      accessor: (row) => {
+        const pct = row.activeContributorsPercent;
+        const status = pct != null ? {
+          label: `${pct}%`,
+          colorClass: pct >= 70 ? 'text-green-600/70' : pct >= 40 ? 'text-orange-600/70' : 'text-red-600/70',
+          bgClass: pct >= 70 ? 'bg-green-500/5' : pct >= 40 ? 'bg-orange-500/5' : 'bg-red-500/5',
+        } : undefined;
+        return (
+          <ContributorsPopover
+            contributors={row.contributors}
+            total={row.contributorsCount}
+            status={status}
+            triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
+          />
+        );
+      },
       getValue: (row) => row.contributorsCount,
-      width: '9%',
+      width: '13%',
     },
     {
       id: 'collectionsCount',
       header: 'Collections',
-      accessor: (row) => (
-        <CollectionsPopover
-          collections={row.collections}
-          total={row.collectionsCount}
-          triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
-        />
-      ),
+      accessor: (row) => {
+        const pct = row.activeCollectionsPercent;
+        const status = pct != null ? {
+          label: `${pct}%`,
+          colorClass: pct >= 70 ? 'text-green-600/70' : pct >= 40 ? 'text-orange-600/70' : 'text-red-600/70',
+          bgClass: pct >= 70 ? 'bg-green-500/5' : pct >= 40 ? 'bg-orange-500/5' : 'bg-red-500/5',
+        } : undefined;
+        return (
+          <CollectionsPopover
+            collections={row.collections}
+            total={row.collectionsCount}
+            status={status}
+            triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
+          />
+        );
+      },
       getValue: (row) => row.collectionsCount,
-      width: '9%',
+      width: '13%',
     },
     {
       id: 'activity',
       header: 'Activity',
-      accessor: (row) =>
-        formatDistanceToNow(new Date(row.lastActivityTimestamp), { addSuffix: true }).replace(
-          /^about /,
-          ''
-        ),
+      accessor: (row) => (
+        <span className="whitespace-nowrap">
+          {formatDistanceToNow(new Date(row.lastActivityTimestamp), { addSuffix: true }).replace(/^about /, '')}
+        </span>
+      ),
       getValue: (row) => row.activityHours,
       width: '9%',
     },
     { id: 'access', header: 'Access', accessor: (row) => row.accessLabel, getValue: (row) => row.accessLabel, width: '8%' },
-    { id: 'role', header: 'Role', accessor: (row) => row.roleLabel, getValue: (row) => row.roleLabel, width: '8%' },
+    { id: 'role', header: 'Your role', accessor: (row) => row.roleLabel, getValue: (row) => row.roleLabel, width: '8%' },
     {
       id: 'gitConnected',
       header: 'Git',
       accessor: (row) =>
         row.gitRepo ? (
-          <span className="block truncate whitespace-nowrap" title={row.gitRepo}>
-            {row.gitRepo}
+          <span className="group/git relative inline-flex items-center min-w-0 cursor-default">
+            <span className="inline-flex items-center gap-1 rounded px-1.5 py-px bg-gray-100 text-gray-500 min-h-[18px] min-w-0 max-w-[150px]">
+              <GitBranch size={10} className="flex-shrink-0" />
+              <span className="truncate text-xs">{row.gitRepo}</span>
+            </span>
+            <span className="pointer-events-none absolute bottom-full left-0 mb-1.5 w-max max-w-[240px] rounded bg-gray-900 px-2 py-1 text-2xs text-white opacity-0 group-hover/git:opacity-100 transition-opacity z-50 whitespace-normal break-all">
+              {row.gitRepo}
+            </span>
           </span>
         ) : (
           '-'
         ),
       getValue: (row) => row.gitConnected,
       width: '12%',
+      cellClassName: 'max-w-0',
     },
     {
       id: 'actions',

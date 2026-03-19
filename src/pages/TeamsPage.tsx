@@ -195,7 +195,7 @@ export function TeamsPage() {
             <span>{row.yourRole}</span>
             {isCollaborator ? (
               <span className="group relative inline-flex items-center cursor-default">
-                <span className="inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] bg-gray-100 text-gray-400">
+                <span data-secondary className="inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] bg-gray-100 text-gray-400">
                   <Eye size={10} className="flex-shrink-0" />
                 </span>
                 <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded bg-gray-900 px-2 py-1 text-2xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-normal">

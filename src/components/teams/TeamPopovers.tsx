@@ -65,7 +65,7 @@ export function MembersPopover({
           (() => {
             const Icon = status.icon;
             return (
-              <span className={`inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
+              <span data-secondary className={`inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
                 <Icon size={10} className="flex-shrink-0" />
                 {status.label}
               </span>
@@ -186,7 +186,7 @@ export function WorkspacesPopover({
           (() => {
             const Icon = status.icon;
             return (
-              <span className={`inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
+              <span data-secondary className={`inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
                 <Icon size={10} className="flex-shrink-0" />
                 {status.label}
               </span>

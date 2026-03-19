@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { LayoutGrid, List, Sparkles, Trash2 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { Activity, Building2, Eye, LayoutGrid, List, Pencil, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { DatabaseTable, type DatabaseTableColumn, type DatabaseTableState } from '../ui/DatabaseTable';
 import { TableAgentPane } from '../ui/TableAgentPane';
@@ -19,6 +20,13 @@ type Member = MemberPreview & {
   membership: Membership;
   role: Role;
   isCurrentUser?: boolean;
+  lastActivityTimestamp: string;
+  workspaceAccessCount: number;
+  activeWorkspacesCount: number;
+  adminWorkspacesCount: number;
+  editorWorkspacesCount: number;
+  groupsCount: number;
+  otherTeamsCount: number;
 };
 
 const VIEW_STORAGE_KEY = 'team-members-view-mode-v2';
@@ -38,7 +46,7 @@ function toHandle(name: string): string {
 }
 
 function membershipForIndex(index: number): Membership {
-  return index <= 1 ? 'Collaborator' : 'Member';
+  return index <= 1 || index % 4 === 0 ? 'Collaborator' : 'Member';
 }
 
 function roleForIndex(index: number): Role {
@@ -48,6 +56,8 @@ function roleForIndex(index: number): Role {
 function mapMembership(role: 'member' | 'collaborator' | null): Membership {
   return role === 'collaborator' ? 'Collaborator' : 'Member';
 }
+
+const ACTIVITY_HOURS = [1, 3, 6, 12, 24, 48, 72, 120, 168, 336, 720];
 
 function buildTeamMembers(
   teamId: string,
@@ -60,12 +70,22 @@ function buildTeamMembers(
     teamId,
     total,
     memberPreview: preview,
-  }).map((m, index) => ({
-    ...m,
-    handle: toHandle(m.name),
-    membership: membershipForIndex(index),
-    role: roleForIndex(index),
-  }));
+  }).map((m, index) => {
+    const workspaceAccessCount = (index % 8) + 1;
+    return {
+      ...m,
+      handle: toHandle(m.name),
+      membership: membershipForIndex(index),
+      role: roleForIndex(index),
+      lastActivityTimestamp: new Date(Date.now() - ACTIVITY_HOURS[index % ACTIVITY_HOURS.length] * 3_600_000).toISOString(),
+      workspaceAccessCount,
+      activeWorkspacesCount: Math.max(0, workspaceAccessCount - (index % 3)),
+      adminWorkspacesCount: index % 5 === 0 ? 2 : index % 5 === 1 ? 1 : 0,
+      editorWorkspacesCount: index % 3 === 0 ? 3 : index % 3 === 1 ? 1 : 0,
+      groupsCount: index % 6 === 0 ? 3 : index % 6 === 1 ? 2 : index % 6 === 2 ? 1 : 0,
+      otherTeamsCount: (index % 7) + 1,
+    };
+  });
 
   if (!isMember || baseMembers.length === 0) return baseMembers;
 
@@ -75,6 +95,13 @@ function buildTeamMembers(
     membership: mapMembership(currentUserMembership),
     role: 'Manager' as Role,
     isCurrentUser: true,
+    lastActivityTimestamp: new Date(Date.now() - 1 * 3_600_000).toISOString(),
+    workspaceAccessCount: 5,
+    activeWorkspacesCount: 4,
+    adminWorkspacesCount: 2,
+    editorWorkspacesCount: 1,
+    groupsCount: 2,
+    otherTeamsCount: 3,
   };
 
   return [
@@ -96,7 +123,7 @@ export function MembersTab({
     () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as 'list' | 'grid' | null) ?? 'list'
   );
   const [tableState, setTableState] = useState<DatabaseTableState>({});
-  const [tableStateVersion, setTableStateVersion] = useState(0);
+  const [tableStateVersion, setTableStateVersion] = useState(1);
   const [showAgentPane, setShowAgentPane] = useState(false);
   const [agentInput, setAgentInput] = useState('');
 
@@ -181,16 +208,128 @@ export function MembersTab({
         </div>
       ),
       getValue: (row) => row.name,
-      width: '46%',
+      width: '220px',
     },
-    { id: 'role', header: 'Role', accessor: (row) => row.role, getValue: (row) => row.role, width: '22%' },
+    { id: 'role', header: 'Role', accessor: (row) => {
+        const isCollaborator = row.membership === 'Collaborator';
+        return (
+          <span className="inline-flex items-center gap-1">
+            <span>{row.role}</span>
+            {isCollaborator ? (
+              <span className="group relative inline-flex items-center cursor-default">
+                <span data-secondary className="inline-flex items-center gap-0.5 font-normal rounded px-1 py-px min-h-[18px] bg-gray-100 text-gray-400">
+                  <Eye size={10} className="flex-shrink-0" />
+                </span>
+                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded bg-gray-900 px-2 py-1 text-2xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-normal">
+                  {row.isCurrentUser ? 'You' : row.name.split(' ')[0]} only {row.isCurrentUser ? 'have' : 'has'} access to workspaces they were explicitly invited to.
+                </span>
+              </span>
+            ) : null}
+          </span>
+        );
+      }, getValue: (row) => row.role, width: '140px' },
+    {
+      id: 'lastActive',
+      header: 'Last active',
+      accessor: (row) => (
+        <span className="whitespace-nowrap">
+          {formatDistanceToNow(new Date(row.lastActivityTimestamp), { addSuffix: true }).replace(/^about /, '')}
+        </span>
+      ),
+      getValue: (row) => row.lastActivityTimestamp,
+      width: '120px',
+    },
+    {
+      id: 'workspaces',
+      header: 'Workspaces',
+      accessor: (row) => {
+        const ratio = row.workspaceAccessCount > 0 ? row.activeWorkspacesCount / row.workspaceAccessCount : 0;
+        const colorClass = ratio >= 0.7 ? 'text-green-600/70' : ratio >= 0.4 ? 'text-orange-600/70' : 'text-red-600/70';
+        const bgClass = ratio >= 0.7 ? 'bg-green-500/5' : ratio >= 0.4 ? 'bg-orange-500/5' : 'bg-red-500/5';
+        return (
+          <span className="group/ws relative inline-flex items-center gap-1 cursor-default">
+            <span className="inline-flex items-center gap-0.5">
+              <LayoutGrid size={11} className="text-gray-500 flex-shrink-0" />
+              <span className="font-medium w-[1.25rem] text-left tabular-nums">{row.workspaceAccessCount}</span>
+            </span>
+            {row.activeWorkspacesCount > 0 ? (
+              <span data-secondary className={`inline-flex items-center gap-0.5 rounded px-1 py-px min-h-[18px] ${bgClass} ${colorClass}`}>
+                <Activity size={10} className="flex-shrink-0" />
+                {row.activeWorkspacesCount}
+              </span>
+            ) : (
+              <span data-secondary className="inline-flex items-center gap-0.5 rounded px-1 py-px min-h-[18px] bg-red-500/5 text-red-600/70">
+                <Activity size={10} className="flex-shrink-0" />
+                0
+              </span>
+            )}
+            {(row.adminWorkspacesCount > 0 || row.editorWorkspacesCount > 0) && (
+              <span data-secondary className="inline-flex items-center gap-1 rounded px-1 py-px min-h-[18px] bg-gray-100 text-gray-500">
+                {row.adminWorkspacesCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <ShieldCheck size={10} className="flex-shrink-0" />
+                    {row.adminWorkspacesCount}
+                  </span>
+                )}
+                {row.adminWorkspacesCount > 0 && row.editorWorkspacesCount > 0 && (
+                  <span className="w-px h-2.5 bg-gray-300/60 flex-shrink-0" />
+                )}
+                {row.editorWorkspacesCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5">
+                    <Pencil size={10} className="flex-shrink-0" />
+                    {row.editorWorkspacesCount}
+                  </span>
+                )}
+              </span>
+            )}
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap opacity-0 group-hover/ws:opacity-100 transition-opacity z-20">
+              {row.workspaceAccessCount} workspace{row.workspaceAccessCount !== 1 ? 's' : ''} · active in {row.activeWorkspacesCount}{row.adminWorkspacesCount > 0 ? ` · admin in ${row.adminWorkspacesCount}` : ''}{row.editorWorkspacesCount > 0 ? ` · editor in ${row.editorWorkspacesCount}` : ''}
+            </span>
+          </span>
+        );
+      },
+      getValue: (row) => row.workspaceAccessCount,
+      width: '180px',
+    },
+    {
+      id: 'groups',
+      header: 'Groups',
+      accessor: (row) => (
+        <span className="group/grp relative inline-flex items-center gap-0.5 cursor-default whitespace-nowrap">
+          <Users size={11} className={row.groupsCount > 0 ? 'text-gray-500 flex-shrink-0' : 'text-gray-300 flex-shrink-0'} />
+          <span className={`tabular-nums ${row.groupsCount === 0 ? 'text-gray-300' : ''}`}>{row.groupsCount}</span>
+          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap opacity-0 group-hover/grp:opacity-100 transition-opacity z-20">
+            {row.groupsCount > 0 ? `Member of ${row.groupsCount} group${row.groupsCount !== 1 ? 's' : ''} in this team` : 'Not in any groups'}
+          </span>
+        </span>
+      ),
+      getValue: (row) => row.groupsCount,
+      width: '80px',
+    },
+    {
+      id: 'otherTeams',
+      header: 'Teams',
+      accessor: (row) => {
+        const total = row.otherTeamsCount + 1;
+        return (
+          <span className="group/ot relative inline-flex items-center gap-0.5 cursor-default whitespace-nowrap">
+            <Building2 size={11} className="text-gray-500 flex-shrink-0" />
+            <span className="tabular-nums">{total}</span>
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap opacity-0 group-hover/ot:opacity-100 transition-opacity z-20">
+              Member of {total} team{total !== 1 ? 's' : ''} in total
+            </span>
+          </span>
+        );
+      },
+      getValue: (row) => row.otherTeamsCount + 1,
+      width: '80px',
+    },
     {
       id: 'membership',
       header: 'Membership',
-      headerTooltip: 'Members have full access to all team resources. Collaborators have access only to the specific resources they\'ve been invited to.',
-      accessor: (row) => row.membership,
+      accessor: () => null,
       getValue: (row) => row.membership,
-      width: '22%',
+      isDefaultVisible: false,
     },
     {
       id: 'actions',
@@ -204,7 +343,7 @@ export function MembersTab({
       ),
       getValue: (row) => row.id,
       align: 'right',
-      width: '10%',
+      width: '32px',
       isHideable: false,
       isSortable: false,
     },
@@ -250,15 +389,15 @@ export function MembersTab({
             rows={orderedMembers}
             columns={columns}
             getRowId={(row) => row.id}
-            defaultVisibleColumnIds={columns.map((column) => column.id)}
-            searchableColumnIds={['name', 'role', 'membership']}
+            defaultVisibleColumnIds={columns.filter((c) => c.id !== 'membership').map((c) => c.id)}
+            searchableColumnIds={['name', 'role']}
             filterableColumnIds={['role', 'membership']}
             filterSelectionModeByColumnId={{ role: 'multi', membership: 'multi' }}
             filterOptionsByColumnId={{
               role: MEMBERS_ROLE_OPTIONS,
               membership: MEMBERS_MEMBERSHIP_OPTIONS,
             }}
-            filterSectionLabelByColumnId={{ role: 'Role', membership: 'Membership' }}
+            filterSectionLabelByColumnId={{ role: 'Role', membership: 'Access' }}
             initialState={tableState}
             stateVersion={tableStateVersion}
             onStateChange={(state) => setTableState(state)}

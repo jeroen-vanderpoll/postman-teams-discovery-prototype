@@ -59,6 +59,8 @@ export interface Workspace {
   gitRepo?: string;
   lastActivityTimestamp: string;
   isStarred: boolean;
+  activeContributorsPercent?: number;
+  activeCollectionsPercent?: number;
 }
 
 export type JoinStatus = 'none' | 'pending' | 'member';

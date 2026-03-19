@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Star, Lock, ArrowLeft, Camera, Pencil, Link2, Hash, LibraryBig, ArrowRightLeft, Clock, Wrench, Bug, Megaphone, X, Settings, Sparkles } from 'lucide-react';
+import { Star, Lock, ArrowLeft, Camera, Pencil, Link2, Hash, LibraryBig, ArrowRightLeft, Clock, Wrench, Bug, Megaphone, X, Settings, Sparkles, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { Avatar } from '../components/ui/Avatar';
@@ -94,6 +94,8 @@ export function TeamProfilePage() {
   const [isEmpty, setIsEmpty] = useState(false);
   const [showAgentPane, setShowAgentPane] = useState(false);
   const [tabAgentPaneOpen, setTabAgentPaneOpen] = useState(false);
+  const [linksExpanded, setLinksExpanded] = useState(false);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
 
   // Honour ?tab= query param (e.g. from popover "View all" links)
   useEffect(() => {
@@ -112,7 +114,7 @@ export function TeamProfilePage() {
 
   if (!team) {
     return (
-      <div className="px-8 pt-8 max-w-5xl mx-auto">
+      <div className="px-8 pt-8 max-w-6xl mx-auto">
         <button
           onClick={() => navigate('/teams')}
           className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 mb-4"
@@ -212,6 +214,11 @@ export function TeamProfilePage() {
     : profileCompletionItems.filter((item) => !item.done).slice(0, 2);
   const updateTypes = ['Improvement', 'Bug fix', 'Announcement'] as const;
   const updateCadenceWeeks = [2, 4, 7] as const;
+  const whatsNewEngagement = [
+    { comments: 1, reactions: [{ emoji: '👍', count: 10 }, { emoji: '👏', count: 4 }, { emoji: '😍', count: 2 }] },
+    { comments: 3, reactions: [{ emoji: '👍', count: 5 }, { emoji: '😢', count: 1 }] },
+    { comments: 0, reactions: [{ emoji: '👍', count: 2 }, { emoji: '🎉', count: 7 }] },
+  ];
   const whatsNewItems = latestUpdates.slice(0, 3).map((workspace, index) => ({
     workspace,
     type: updateTypes[index % updateTypes.length],
@@ -222,6 +229,7 @@ export function TeamProfilePage() {
         : index % 3 === 1
           ? `Addressed reliability issues and resolved a regression reported by workspace contributors.`
           : `Shared a fresh update with the team, including rollout details and what to expect next.`,
+    engagement: whatsNewEngagement[index % whatsNewEngagement.length],
   }));
   const assistantFocusActions = [
     { id: 'about', label: 'Write a team about section', onClick: () => addToast('About editor coming soon', 'info') },
@@ -265,7 +273,7 @@ export function TeamProfilePage() {
       className={`pt-5 pb-10 transition-[padding,max-width,margin] duration-200 ${
         isAnyAssistantPaneOpen
           ? 'mx-0 max-w-none px-4 sm:px-6 lg:px-8 lg:pr-[392px]'
-          : 'mx-auto max-w-5xl px-8'
+          : 'mx-auto max-w-6xl px-8'
       }`}
     >
       <Breadcrumb
@@ -416,7 +424,7 @@ export function TeamProfilePage() {
                 </div>
                 <button
                   onClick={() => setShowAgentPane(true)}
-                  className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                  className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800"
                 >
                   <Sparkles size={12} />
                   Build with AI
@@ -557,7 +565,7 @@ export function TeamProfilePage() {
                     <p className="text-xs text-gray-400">No links yet. Add team links.</p>
                   ) : (
                     <ul className="flex flex-wrap gap-1.5">
-                      {quickLinks.map((link) => (
+                      {(linksExpanded ? quickLinks : quickLinks.slice(0, 2)).map((link) => (
                         <li key={link.label}>
                           <a
                             href={link.href}
@@ -570,6 +578,26 @@ export function TeamProfilePage() {
                           </a>
                         </li>
                       ))}
+                      {!linksExpanded && quickLinks.length > 2 && (
+                        <li>
+                          <button
+                            onClick={() => setLinksExpanded(true)}
+                            className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                          >
+                            +{quickLinks.length - 2}
+                          </button>
+                        </li>
+                      )}
+                      {linksExpanded && quickLinks.length > 2 && (
+                        <li>
+                          <button
+                            onClick={() => setLinksExpanded(false)}
+                            className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                          >
+                            Show less
+                          </button>
+                        </li>
+                      )}
                     </ul>
                   )}
                 </div>
@@ -587,7 +615,7 @@ export function TeamProfilePage() {
                     <p className="text-xs text-gray-400">No tags yet. Add tags for discoverability.</p>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
-                      {focusAreas.map((area) => (
+                      {(tagsExpanded ? focusAreas : focusAreas.slice(0, 2)).map((area) => (
                         <span
                           key={area}
                           className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600"
@@ -595,6 +623,22 @@ export function TeamProfilePage() {
                           {area}
                         </span>
                       ))}
+                      {!tagsExpanded && focusAreas.length > 2 && (
+                        <button
+                          onClick={() => setTagsExpanded(true)}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          +{focusAreas.length - 2}
+                        </button>
+                      )}
+                      {tagsExpanded && focusAreas.length > 2 && (
+                        <button
+                          onClick={() => setTagsExpanded(false)}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          Show less
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -623,7 +667,77 @@ export function TeamProfilePage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <section className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+            <section className="px-4 py-3.5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">What&apos;s new</h3>
+              {whatsNewItems.length > 0 ? (
+                <div className="space-y-2">
+                  {whatsNewItems.map(({ workspace, type, snippet, timestampLabel, engagement }) => (
+                    <div
+                      key={`${workspace.id}-update`}
+                      onClick={() => addToast('Update details coming soon', 'info')}
+                      className="card px-3 pt-3 pb-3 hover:border-gray-300 hover:shadow transition-all group relative cursor-pointer flex flex-col gap-1.5"
+                    >
+                      <CardIdentity
+                        icon={
+                          type === 'Improvement' ? (
+                            <Wrench size={13} />
+                          ) : type === 'Bug fix' ? (
+                            <Bug size={13} />
+                          ) : (
+                            <Megaphone size={13} />
+                          )
+                        }
+                        iconBgClass={
+                          type === 'Improvement'
+                            ? 'bg-blue-100'
+                            : type === 'Bug fix'
+                              ? 'bg-red-100'
+                              : 'bg-violet-100'
+                        }
+                        iconClassName={
+                          type === 'Improvement'
+                            ? 'text-blue-700'
+                            : type === 'Bug fix'
+                              ? 'text-red-700'
+                              : 'text-violet-700'
+                        }
+                        title={workspace.name}
+                        meta={type}
+                      />
+                      <p className="mt-0.5 pl-8 text-2xs text-gray-500 leading-snug line-clamp-2">{snippet}</p>
+                      <p className="mt-0.5 pl-8 flex items-center gap-1 text-2xs text-gray-700">
+                        <Clock size={11} className="text-gray-500" />
+                        {timestampLabel}
+                      </p>
+                      <div className="mt-1 pl-8 flex items-center gap-2.5 text-2xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <MessageSquare size={11} />
+                          {engagement.comments}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          {engagement.reactions.map(({ emoji, count }) => (
+                            <span key={emoji} className="flex items-center gap-0.5">
+                              <span>{emoji}</span>
+                              <span>{count}</span>
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addToast('More updates coming soon', 'info')}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Load more
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">No updates yet. Post your first update.</p>
+              )}
+            </section>
+
+            <section className="px-4 py-3.5">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-gray-900">Top workspaces</h3>
                 <button
@@ -644,7 +758,7 @@ export function TeamProfilePage() {
               )}
             </section>
 
-            <section className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+            <section className="px-4 py-3.5">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">Top collections</h3>
               {topCollections.length > 0 ? (
                 <div className="space-y-2">
@@ -708,62 +822,6 @@ export function TeamProfilePage() {
                 </div>
               ) : (
                 <p className="text-xs text-gray-400">No collections yet. Publish your first collection.</p>
-              )}
-            </section>
-
-            <section className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">What&apos;s new</h3>
-              {whatsNewItems.length > 0 ? (
-                <div className="space-y-2">
-                  {whatsNewItems.map(({ workspace, type, snippet, timestampLabel }) => (
-                    <div
-                      key={`${workspace.id}-update`}
-                      onClick={() => addToast('Update details coming soon', 'info')}
-                      className="card px-3 pt-3 pb-3 hover:border-gray-300 hover:shadow transition-all group relative cursor-pointer flex flex-col gap-1.5"
-                    >
-                      <CardIdentity
-                        icon={
-                          type === 'Improvement' ? (
-                            <Wrench size={13} />
-                          ) : type === 'Bug fix' ? (
-                            <Bug size={13} />
-                          ) : (
-                            <Megaphone size={13} />
-                          )
-                        }
-                        iconBgClass={
-                          type === 'Improvement'
-                            ? 'bg-blue-100'
-                            : type === 'Bug fix'
-                              ? 'bg-red-100'
-                              : 'bg-violet-100'
-                        }
-                        iconClassName={
-                          type === 'Improvement'
-                            ? 'text-blue-700'
-                            : type === 'Bug fix'
-                              ? 'text-red-700'
-                              : 'text-violet-700'
-                        }
-                        title={workspace.name}
-                        meta={type}
-                      />
-                      <p className="mt-0.5 pl-8 text-2xs text-gray-500 leading-snug line-clamp-2">{snippet}</p>
-                      <p className="mt-0.5 pl-8 flex items-center gap-1 text-2xs text-gray-700">
-                        <Clock size={11} className="text-gray-500" />
-                        {timestampLabel}
-                      </p>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => addToast('More updates coming soon', 'info')}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Load more
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">No updates yet. Post your first update.</p>
               )}
             </section>
           </div>
