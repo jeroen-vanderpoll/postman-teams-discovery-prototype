@@ -8,9 +8,10 @@ import type { Workspace } from '../../types';
 
 interface WorkspaceCardProps {
   workspace: Workspace;
+  className?: string;
 }
 
-export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
+export function WorkspaceCard({ workspace, className }: WorkspaceCardProps) {
   const { toggleStar } = useWorkspacesStore();
   const { teams } = useTeamsStore();
 
@@ -34,7 +35,7 @@ export function WorkspaceCard({ workspace }: WorkspaceCardProps) {
   const AccessIcon = accessVisual.icon;
 
   return (
-    <div className="card px-3 pt-3 pb-3 hover:border-gray-300 hover:shadow transition-all group relative cursor-pointer flex flex-col gap-2">
+    <div className={className ?? "card px-3 pt-3 pb-3 hover:border-gray-300 hover:shadow transition-all group relative cursor-pointer flex flex-col gap-2"}>
       {/* Top-right: star — same placement as TeamCard */}
       <div
         className="absolute top-2.5 right-2.5 flex items-center gap-0.5"

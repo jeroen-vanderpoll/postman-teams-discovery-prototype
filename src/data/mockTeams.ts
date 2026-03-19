@@ -30,7 +30,7 @@ export const MOCK_TEAMS: Team[] = [
     name: 'Postman Engineering',
     handle: '@postman-engineering',
     slackChannel: 'postman-engineering',
-    about: 'We build and run the platform foundations that power how teams work in Postman every day. From internal tooling and workspace architecture to collaboration workflows and developer experience, we focus on making complex API work feel fast, reliable, and connected. We partner closely with product, support, and customer teams to turn feedback into practical improvements that scale across the company.',
+    about: 'We build and run the platform foundations that power how teams work in Postman every day. From internal tooling and workspace architecture to collaboration workflows and developer experience, we focus on making complex API work feel fast, reliable, and connected. We partner closely with product, support, and customer teams to turn feedback into practical improvements that scale across the company.\n\n💬 Have questions? Reach out in [#postman-engineering](https://slack.com).\n\n🚀 Getting started with our services? Head to the [Platform Onboarding workspace](https://postman.com).',
     aiSummary: 'Building and evolving Postman platform foundations for internal and external developers.',
     initials: 'PM',
     avatarColor: color(0),

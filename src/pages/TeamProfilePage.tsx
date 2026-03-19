@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Star, Lock, ArrowLeft, Camera, Pencil, Link2, Hash, LibraryBig, ArrowRightLeft, Clock, Wrench, Bug, Megaphone, X, Settings, Sparkles, MessageSquare } from 'lucide-react';
+import { Star, Lock, ArrowLeft, Camera, Pencil, Link2, Hash, LibraryBig, ArrowRightLeft, Clock, Wrench, Bug, Megaphone, X, Settings, Sparkles, MessageSquare, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { Avatar } from '../components/ui/Avatar';
@@ -219,16 +220,59 @@ export function TeamProfilePage() {
     { comments: 3, reactions: [{ emoji: '👍', count: 5 }, { emoji: '😢', count: 1 }] },
     { comments: 0, reactions: [{ emoji: '👍', count: 2 }, { emoji: '🎉', count: 7 }] },
   ];
+  const whatsNewContents = [
+    {
+      title: `${latestUpdates[0]?.name ?? 'Migration Staging'} v2.4 release`,
+      body: 'This release improves the collaboration flow to reduce setup friction and speed up handoffs between team members.',
+      sections: [
+        {
+          heading: 'New endpoints',
+          items: [
+            { method: 'POST', path: '/workspaces/{id}/handoffs', description: '— Initiates a workspace handoff to another team.' },
+            { method: 'GET', path: '/workspaces/{id}/handoffs', description: '— Returns a list of all active handoffs.' },
+          ],
+        },
+        {
+          heading: 'Updated behavior',
+          items: [
+            { method: 'PATCH', path: '/workspaces/{id}', description: '— Now supports partial updates to workspace metadata.' },
+          ],
+        },
+      ],
+    },
+    {
+      title: `${latestUpdates[1]?.name ?? 'Legacy API Catalogue'} — regression fix`,
+      body: 'Addressed reliability issues and resolved a regression reported by workspace contributors affecting collection sync.',
+      sections: [
+        {
+          heading: 'Fixed issues',
+          items: [
+            { method: 'GET', path: '/collections/{id}/sync', description: '— No longer returns 500 on large collections.' },
+            { method: 'PUT', path: '/collections/{id}', description: '— Fixed race condition when updating simultaneously.' },
+          ],
+        },
+      ],
+    },
+    {
+      title: `${latestUpdates[2]?.name ?? 'Enterprise Collections'} announcement`,
+      body: 'Shared a fresh update with the team, including rollout details and what to expect in the next quarter.',
+      sections: [
+        {
+          heading: 'What\'s coming',
+          items: [
+            { method: 'POST', path: '/collections/{id}/publish', description: '— New publishing flow with approval gates.' },
+            { method: 'GET', path: '/collections/featured', description: '— Returns org-featured collections for the dashboard.' },
+            { method: 'DELETE', path: '/collections/{id}/drafts', description: '— Clean up unpublished drafts in bulk.' },
+          ],
+        },
+      ],
+    },
+  ];
   const whatsNewItems = latestUpdates.slice(0, 3).map((workspace, index) => ({
     workspace,
     type: updateTypes[index % updateTypes.length],
     timestampLabel: `${updateCadenceWeeks[index % updateCadenceWeeks.length]} weeks ago`,
-    snippet:
-      index % 3 === 0
-        ? `Improved collaboration flow in ${workspace.name} to reduce setup friction and speed up handoffs.`
-        : index % 3 === 1
-          ? `Addressed reliability issues and resolved a regression reported by workspace contributors.`
-          : `Shared a fresh update with the team, including rollout details and what to expect next.`,
+    content: whatsNewContents[index % whatsNewContents.length],
     engagement: whatsNewEngagement[index % whatsNewEngagement.length],
   }));
   const assistantFocusActions = [
@@ -360,32 +404,48 @@ export function TeamProfilePage() {
                 <p className="text-xs text-gray-400">{team.handle}</p>
               </div>
 
-              {/* Meta row */}
-              <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                {/* Avatar stack + member count */}
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center">
-                    {contributorPeople.map((person, i) => (
-                      <div key={person.id} className={i > 0 ? '-ml-1.5' : ''} style={{ zIndex: 5 - i }}>
-                        <Avatar initials={person.initials} color={person.avatarColor} size="xs" />
-                      </div>
-                    ))}
+              {/* Meta rows */}
+              <div className="mb-1 flex flex-col gap-1.5">
+                {/* Row 1: Members */}
+                <div className="flex items-center gap-2">
+                  <div className="flex w-4 justify-center flex-shrink-0">
+                    <Users size={12} className="text-gray-400" />
                   </div>
-                  <button
-                    onClick={() => setActiveTab('members')}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    {effectiveMembersCount > 5 ? `+${effectiveMembersCount - 5}` : ''}{' '}
-                    {effectiveMembersCount.toLocaleString()} members
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center">
+                      {contributorPeople.map((person, i) => (
+                        <div key={person.id} className={i > 0 ? '-ml-1.5' : ''} style={{ zIndex: 5 - i }}>
+                          <Avatar initials={person.initials} color={person.avatarColor} size="xs" />
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('members')}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      {effectiveMembersCount > 5
+                        ? `+${(effectiveMembersCount - 5).toLocaleString()} more`
+                        : null}
+                    </button>
+                    {team.isMember && (
+                      <button
+                        onClick={() => addToast('Invite flow coming soon', 'info')}
+                        className="inline-flex items-center gap-1 rounded border border-gray-200 px-2 py-0.5 text-2xs text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                      >
+                        Invite teammates
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                {/* Links */}
-                {quickLinks.length > 0 && (
-                  <>
-                    <span className="text-gray-300">·</span>
+                {/* Row 2: Links */}
+                <div className="flex items-center gap-2">
+                  <div className="flex w-4 justify-center flex-shrink-0">
+                    <Link2 size={12} className="text-gray-400" />
+                  </div>
+                  {quickLinks.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-1">
-                      {(linksExpanded ? quickLinks : quickLinks.slice(0, 2)).map((link) => (
+                      {quickLinks.map((link) => (
                         <a
                           key={link.label}
                           href={link.href}
@@ -393,76 +453,21 @@ export function TeamProfilePage() {
                           rel="noreferrer"
                           className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
                         >
-                          <Link2 size={11} />
                           {link.label}
                         </a>
                       ))}
-                      {!linksExpanded && quickLinks.length > 2 && (
-                        <button
-                          onClick={() => setLinksExpanded(true)}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                        >
-                          +{quickLinks.length - 2}
-                        </button>
-                      )}
-                      {linksExpanded && quickLinks.length > 2 && (
-                        <button
-                          onClick={() => setLinksExpanded(false)}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                        >
-                          Show less
-                        </button>
-                      )}
                     </div>
-                  </>
-                )}
-
-                {/* Tags */}
-                {focusAreas.length > 0 && (
-                  <>
-                    <span className="text-gray-300">·</span>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {(tagsExpanded ? focusAreas : focusAreas.slice(0, 2)).map((area) => (
-                        <span
-                          key={area}
-                          className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600"
-                        >
-                          {area}
-                        </span>
-                      ))}
-                      {!tagsExpanded && focusAreas.length > 2 && (
-                        <button
-                          onClick={() => setTagsExpanded(true)}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                        >
-                          +{focusAreas.length - 2}
-                        </button>
-                      )}
-                      {tagsExpanded && focusAreas.length > 2 && (
-                        <button
-                          onClick={() => setTagsExpanded(false)}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                        >
-                          Show less
-                        </button>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {generatedSummary && (
-                <div className="group/summary relative mb-1.5 pr-7">
-                  <p className="truncate text-xs text-gray-500">{generatedSummary}</p>
-                  <button
-                    aria-label="Edit summary"
-                    onClick={() => {}}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/summary:opacity-100"
-                  >
-                    <Pencil size={10} />
-                  </button>
+                  ) : (
+                    <button
+                      onClick={() => addToast('Link editor coming soon', 'info')}
+                      className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                      Add links...
+                    </button>
+                  )}
                 </div>
-              )}
+
+              </div>
 
             </div>
 
@@ -508,91 +513,88 @@ export function TeamProfilePage() {
       {activeTab === 'about' ? (
         isEmpty ? (
           <div className="space-y-4">
-            <section className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <p className="text-xs font-medium text-gray-700">Complete your team profile</p>
+            {/* AI companion box — full width */}
+            <section className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50 min-h-[320px] flex flex-col">
+              <div className="flex-1 px-5 pt-5 pb-4 flex flex-col">
+                <div className="flex items-start gap-3 mb-5">
+                  <div className="flex-shrink-0 w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center">
+                    <Sparkles size={13} className="text-orange-500" />
+                  </div>
+                  <div className="rounded-xl rounded-tl-sm bg-white border border-gray-200 px-3.5 py-2.5 max-w-sm shadow-sm">
+                    <p className="text-xs text-gray-700 leading-relaxed">👋 Hi! I can help you set up <strong>{team.name}</strong> — write your description, suggest links, and make your team easy to find.</p>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowAgentPane(true)}
-                  className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:border-gray-400 hover:text-gray-800"
-                >
-                  <Sparkles size={12} />
-                  Build with AI
-                </button>
+                <div className="flex-1 mb-3 mt-24">
+                  <p className="text-2xs font-medium text-gray-400 mb-2">Suggestions to get started with:</p>
+                  <div className="divide-y divide-gray-200">
+                    {[
+                      'Write a team description',
+                      'Invite my teammates',
+                      'Move workspaces to this team',
+                    ].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => setShowAgentPane(true)}
+                        className="flex w-full items-center py-2.5 text-left text-xs text-gray-600 hover:text-gray-900 transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                  <input
+                    type="text"
+                    placeholder="Tell us how we can help build your team..."
+                    className="flex-1 text-xs text-gray-700 placeholder-gray-400 outline-none bg-transparent"
+                    onKeyDown={(e) => { if (e.key === 'Enter') setShowAgentPane(true); }}
+                  />
+                  <button
+                    onClick={() => setShowAgentPane(true)}
+                    className="flex-shrink-0 rounded bg-orange-400 px-2.5 py-1 text-xs font-medium text-white hover:bg-orange-500 transition-colors"
+                  >
+                    Let&apos;s Go
+                  </button>
+                </div>
               </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-blue-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 transition-all"
-                  style={{ width: `${profileCompletion}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-gray-500">Invite your crow, bring in your workspaces and tell us a bit more about the team.</p>
             </section>
 
+            {/* Row 2: About (2/3) + Workspaces (1/3) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <section className="lg:col-span-2 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
-                <h2 className="text-sm font-semibold text-gray-900">About us</h2>
-                <p className="mt-2 text-sm text-gray-400">
-                  No team description yet.
-                </p>
-                <div className="mt-3 flex items-center gap-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-gray-900">About us</h2>
+                </div>
+                <p className="text-sm text-gray-400 leading-6 mb-3">No team description yet. Add a short overview so others know what this team owns.</p>
+                <button
+                  onClick={() => addToast('AI writer coming soon', 'info')}
+                  className="inline-flex items-center gap-1.5 rounded border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:border-gray-300 hover:text-gray-800 transition-colors"
+                >
+                  <Sparkles size={11} className="text-violet-400" />
+                  Write with AI
+                </button>
+              </section>
+
+              <section className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-900">Top workspaces</h3>
+                </div>
+                <p className="text-xs text-gray-400 mb-3">No workspaces yet. Move or create workspaces to get started.</p>
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => addToast('AI writer coming soon', 'info')}
-                    className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                    onClick={() => addToast('Move workspaces flow coming soon', 'info')}
+                    className="inline-flex items-center rounded border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:border-gray-300 hover:text-gray-800 transition-colors"
                   >
-                    <Sparkles size={12} />
-                    Write with AI
+                    Move workspaces
+                  </button>
+                  <button
+                    onClick={() => addToast('Create workspace flow coming soon', 'info')}
+                    className="inline-flex items-center rounded border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:border-gray-300 hover:text-gray-800 transition-colors"
+                  >
+                    Create workspace
                   </button>
                 </div>
               </section>
-
-              <aside className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
-                <h2 className="text-sm font-semibold text-gray-900 mb-2">Information</h2>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-2xs text-gray-400">People</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Avatar initials={primaryMember.initials} color={primaryMember.avatarColor} size="xs" />
-                      <p className="text-xs text-gray-600">
-                        {effectiveMembersCount} {effectiveMembersCount === 1 ? 'manager' : 'members'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setActiveTab('members')}
-                      className="mt-2 inline-flex h-6 items-center rounded border border-gray-200 px-2 text-2xs text-gray-600 hover:border-gray-300 hover:text-gray-800"
-                    >
-                      Invite people
-                    </button>
-                  </div>
-
-                  <div>
-                    <p className="text-2xs text-gray-400">Links</p>
-                    {quickLinks.length === 0 ? (
-                      <button
-                        onClick={() => addToast('Link editor coming soon', 'info')}
-                        className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        <Link2 size={12} />
-                        Add links...
-                      </button>
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <p className="text-2xs text-gray-400">Tags</p>
-                    {focusAreas.length === 0 ? (
-                      <button
-                        onClick={() => addToast('Tag editor coming soon', 'info')}
-                        className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        <Hash size={12} />
-                        Add tags...
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-              </aside>
             </div>
           </div>
         ) : (
@@ -614,58 +616,172 @@ export function TeamProfilePage() {
                   No team description yet. Add a short overview so others know what this team owns.
                 </p>
               ) : (
-                <p className="text-sm text-gray-700 leading-6">{aboutText}</p>
+                <div className="space-y-3 text-sm text-gray-700 leading-6">
+                  <ReactMarkdown
+                    components={{
+                      p: ({ children }) => <p className="text-sm text-gray-700 leading-6">{children}</p>,
+                      a: ({ href, children }) => (
+                        <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {aboutText}
+                  </ReactMarkdown>
+                </div>
               )}
             </section>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <section className="px-4 py-3.5">
+            {/* Left column: Top workspaces + Top collections stacked */}
+            <div className="flex flex-col gap-4">
+              <section className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-900">Top workspaces</h3>
+                  <button
+                    onClick={() => setActiveTab('workspaces')}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    View all ({accessibleWorkspacesCount.toLocaleString()})
+                  </button>
+                </div>
+                {topWorkspaces.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {topWorkspaces.slice(0, 3).map((workspace) => (
+                      <div key={workspace.id} className="-mx-4 px-4">
+                        <WorkspaceCard workspace={workspace} className="py-3 hover:bg-gray-50 transition-colors group relative cursor-pointer flex flex-col gap-2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">No workspaces yet. Create the first one.</p>
+                )}
+              </section>
+
+              <section className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Top collections</h3>
+                {topCollections.length > 0 ? (
+                  <div className="divide-y divide-gray-100">
+                    {topCollections.slice(0, 3).map((collection) => (
+                      <div
+                        key={collection.id}
+                        onClick={() => addToast('Collection details coming soon', 'info')}
+                        className="py-3 group relative cursor-pointer flex flex-col gap-1.5 hover:bg-gray-50 -mx-4 px-4 transition-colors"
+                      >
+                        <div
+                          className="absolute top-3 right-4 flex items-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {starredCollectionIds.has(collection.id) && (
+                            <button
+                              onClick={() => toggleCollectionStar(collection.id)}
+                              className="p-1 text-yellow-400 group-hover:opacity-0 transition-opacity absolute right-0 top-0 pointer-events-none group-hover:pointer-events-none"
+                            >
+                              <Star size={12} fill="currentColor" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => toggleCollectionStar(collection.id)}
+                            className={`p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ${
+                              starredCollectionIds.has(collection.id)
+                                ? 'text-yellow-400'
+                                : 'text-gray-400 hover:text-yellow-400'
+                            }`}
+                          >
+                            <Star size={12} fill={starredCollectionIds.has(collection.id) ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
+                        <CardIdentity
+                          icon={<LibraryBig size={13} />}
+                          iconBgClass="bg-indigo-100"
+                          iconClassName="text-indigo-700"
+                          title={getRealisticCollectionName(collection.id, collection.name)}
+                          meta={collection.workspaceName}
+                        />
+                        <p className="mt-0.5 flex items-center gap-3 pl-8 text-2xs text-gray-700">
+                          <span className="inline-flex items-center gap-1">
+                            <ArrowRightLeft size={11} className="text-gray-500" />
+                            {collection.requestsCount} requests
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock size={11} className="text-gray-500" />
+                            {formatDistanceToNow(new Date(collection.workspaceActivityTimestamp), {
+                              addSuffix: true,
+                            }).replace(/^about /, '')}
+                          </span>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400">No collections yet. Publish your first collection.</p>
+                )}
+              </section>
+            </div>
+
+            {/* Right column (2/3): What's new — expanded cards */}
+            <section className="lg:col-span-2 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
               <h3 className="text-sm font-semibold text-gray-900 mb-2">What&apos;s new</h3>
               {whatsNewItems.length > 0 ? (
-                <div className="space-y-2">
-                  {whatsNewItems.map(({ workspace, type, snippet, timestampLabel, engagement }) => (
+                <div className="divide-y divide-gray-100">
+                  {whatsNewItems.map(({ workspace, type, content, timestampLabel, engagement }) => (
                     <div
                       key={`${workspace.id}-update`}
                       onClick={() => addToast('Update details coming soon', 'info')}
-                      className="card px-3 pt-3 pb-3 hover:border-gray-300 hover:shadow transition-all group relative cursor-pointer flex flex-col gap-1.5"
+                      className="py-4 group relative cursor-pointer hover:bg-gray-50 -mx-4 px-4 transition-colors"
                     >
-                      <CardIdentity
-                        icon={
-                          type === 'Improvement' ? (
-                            <Wrench size={13} />
-                          ) : type === 'Bug fix' ? (
-                            <Bug size={13} />
-                          ) : (
-                            <Megaphone size={13} />
-                          )
-                        }
-                        iconBgClass={
-                          type === 'Improvement'
-                            ? 'bg-blue-100'
-                            : type === 'Bug fix'
-                              ? 'bg-red-100'
-                              : 'bg-violet-100'
-                        }
-                        iconClassName={
-                          type === 'Improvement'
-                            ? 'text-blue-700'
-                            : type === 'Bug fix'
-                              ? 'text-red-700'
-                              : 'text-violet-700'
-                        }
-                        title={workspace.name}
-                        meta={type}
-                      />
-                      <p className="mt-0.5 pl-8 text-2xs text-gray-500 leading-snug line-clamp-2">{snippet}</p>
-                      <p className="mt-0.5 pl-8 flex items-center gap-1 text-2xs text-gray-700">
-                        <Clock size={11} className="text-gray-500" />
-                        {timestampLabel}
-                      </p>
-                      <div className="mt-1 pl-8 flex items-center gap-2.5 text-2xs text-gray-400">
+                      {/* Header: author + timestamp + type badge */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Avatar initials={primaryMember.initials} color={primaryMember.avatarColor} size="xs" />
+                          <span className="text-xs font-medium text-gray-700">{primaryMember.name}</span>
+                          <span className="text-2xs text-gray-400">{timestampLabel}</span>
+                        </div>
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-medium uppercase tracking-wide ${
+                          type === 'Improvement' ? 'bg-blue-50 text-blue-600' :
+                          type === 'Bug fix' ? 'bg-red-50 text-red-600' :
+                          'bg-violet-50 text-violet-600'
+                        }`}>
+                          {type}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <p className="text-sm font-semibold text-gray-900 mb-1">{content.title}</p>
+
+                      {/* Intro body */}
+                      <p className="text-xs text-gray-500 leading-relaxed mb-3">{content.body}</p>
+
+                      {/* Sections with endpoint bullets */}
+                      {content.sections.map((section) => (
+                        <div key={section.heading} className="mb-3">
+                          <p className="text-xs font-semibold text-gray-700 mb-1.5">{section.heading}</p>
+                          <ul className="space-y-1.5">
+                            {section.items.map((item) => (
+                              <li key={item.path} className="flex items-start gap-1.5 text-xs text-gray-600 leading-relaxed">
+                                <span className={`mt-px inline-flex shrink-0 items-center rounded px-1 py-px text-2xs font-semibold ${
+                                  item.method === 'GET' ? 'bg-green-50 text-green-700' :
+                                  item.method === 'POST' ? 'bg-blue-50 text-blue-700' :
+                                  item.method === 'PUT' || item.method === 'PATCH' ? 'bg-yellow-50 text-yellow-700' :
+                                  'bg-red-50 text-red-700'
+                                }`}>{item.method}</span>
+                                <span>
+                                  <code className="rounded bg-gray-100 px-1 py-px text-2xs text-gray-700 font-mono">{item.path}</code>
+                                  {' '}<span className="text-gray-500">{item.description}</span>
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+
+                      {/* Footer: comments + reactions */}
+                      <div className="flex items-center gap-3 text-2xs text-gray-400 pt-1">
                         <span className="flex items-center gap-1">
                           <MessageSquare size={11} />
-                          {engagement.comments}
+                          {engagement.comments} {engagement.comments === 1 ? 'comment' : 'comments'}
                         </span>
                         <span className="flex items-center gap-1.5">
                           {engagement.reactions.map(({ emoji, count }) => (
@@ -678,103 +794,9 @@ export function TeamProfilePage() {
                       </div>
                     </div>
                   ))}
-                  <button
-                    onClick={() => addToast('More updates coming soon', 'info')}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Load more
-                  </button>
                 </div>
               ) : (
                 <p className="text-xs text-gray-400">No updates yet. Post your first update.</p>
-              )}
-            </section>
-
-            <section className="px-4 py-3.5">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-gray-900">Top workspaces</h3>
-                <button
-                  onClick={() => setActiveTab('workspaces')}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  View all ({accessibleWorkspacesCount.toLocaleString()})
-                </button>
-              </div>
-              {topWorkspaces.length > 0 ? (
-                <div className="space-y-2">
-                  {topWorkspaces.slice(0, 3).map((workspace) => (
-                    <WorkspaceCard key={workspace.id} workspace={workspace} />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">No workspaces yet. Create the first one.</p>
-              )}
-            </section>
-
-            <section className="px-4 py-3.5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">Top collections</h3>
-              {topCollections.length > 0 ? (
-                <div className="space-y-2">
-                  {topCollections.map((collection) => (
-                    <div
-                      key={collection.id}
-                      onClick={() => addToast('Collection details coming soon', 'info')}
-                      className="card px-3 pt-3 pb-3 hover:border-gray-300 hover:shadow transition-all group relative cursor-pointer flex flex-col gap-1.5"
-                    >
-                      <div
-                        className="absolute top-2 right-2 flex items-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {starredCollectionIds.has(collection.id) && (
-                          <button
-                            onClick={() => toggleCollectionStar(collection.id)}
-                            className="p-1 text-yellow-400 group-hover:opacity-0 transition-opacity absolute right-0 top-0 pointer-events-none group-hover:pointer-events-none"
-                          >
-                            <Star size={12} fill="currentColor" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => toggleCollectionStar(collection.id)}
-                          className={`p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ${
-                            starredCollectionIds.has(collection.id)
-                              ? 'text-yellow-400'
-                              : 'text-gray-400 hover:text-yellow-400'
-                          }`}
-                        >
-                          <Star size={12} fill={starredCollectionIds.has(collection.id) ? 'currentColor' : 'none'} />
-                        </button>
-                      </div>
-
-                      <CardIdentity
-                        icon={<LibraryBig size={13} />}
-                        iconBgClass="bg-indigo-100"
-                        iconClassName="text-indigo-700"
-                        title={getRealisticCollectionName(collection.id, collection.name)}
-                        meta={collection.workspaceName}
-                      />
-                      <p className="mt-0.5 flex items-center gap-3 pl-8 text-2xs text-gray-700">
-                        <span className="inline-flex items-center gap-1">
-                          <ArrowRightLeft size={11} className="text-gray-500" />
-                          {collection.requestsCount} requests
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock size={11} className="text-gray-500" />
-                          {formatDistanceToNow(new Date(collection.workspaceActivityTimestamp), {
-                            addSuffix: true,
-                          }).replace(/^about /, '')}
-                        </span>
-                      </p>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => addToast('More collections coming soon', 'info')}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Load more
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400">No collections yet. Publish your first collection.</p>
               )}
             </section>
           </div>
