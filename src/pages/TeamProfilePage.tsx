@@ -1,7 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Star, Lock, ArrowLeft, Camera, Pencil, Link2, Hash, LibraryBig, ArrowRightLeft, Clock, Wrench, Bug, Megaphone, X, Settings, Sparkles, MessageSquare, Users } from 'lucide-react';
+import { Star, Lock, ArrowLeft, Camera, Pencil, Link2, LibraryBig, ArrowRightLeft, Clock, X, Settings, Sparkles, MessageSquare, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { Avatar } from '../components/ui/Avatar';
@@ -95,8 +95,7 @@ export function TeamProfilePage() {
   const [isEmpty, setIsEmpty] = useState(false);
   const [showAgentPane, setShowAgentPane] = useState(false);
   const [tabAgentPaneOpen, setTabAgentPaneOpen] = useState(false);
-  const [linksExpanded, setLinksExpanded] = useState(false);
-  const [tagsExpanded, setTagsExpanded] = useState(false);
+
 
   // Honour ?tab= query param (e.g. from popover "View all" links)
   useEffect(() => {
@@ -142,7 +141,6 @@ export function TeamProfilePage() {
   };
   const effectiveMembersCount = isEmpty ? 1 : team.membersCount;
   const effectiveMemberPreview = isEmpty ? [fallbackMember] : team.memberPreview;
-  const generatedSummary = isEmpty ? null : (team.aiSummary?.trim() || null);
   const teamMembers = buildTeamMemberPreviewList({
     teamId: team.id,
     total: effectiveMembersCount,
@@ -194,25 +192,10 @@ export function TeamProfilePage() {
     { label: 'Confluence', href: `https://example.atlassian.net/wiki/spaces/${teamSlug.toUpperCase()}` },
     { label: 'Team docs', href: `https://docs.example.com/teams/${teamSlug}` },
   ];
-  const focusAreas = isEmpty ? [] : ['Platform reliability', 'Internal tooling', 'Developer collaboration'];
   const contributorPeople = teamMembers.slice(0, isEmpty ? 1 : 5).map((member, idx) => ({
     ...member,
     role: idx === 0 ? 'Manager' : null,
   }));
-  const profileCompletionItems = [
-    { label: 'About us', done: !aboutMissing },
-    { label: 'Contact method', done: true },
-    { label: 'Links', done: quickLinks.length >= 2 },
-    { label: 'Contributors', done: effectiveMembersCount > 0 },
-    { label: 'Top workspaces', done: topWorkspaces.length >= 3 },
-    { label: 'Top collections', done: topCollections.length > 0 },
-    { label: 'What’s new', done: latestUpdates.length > 0 },
-  ];
-  const completedItems = profileCompletionItems.filter((item) => item.done).length;
-  const profileCompletion = isEmpty ? 10 : Math.round((completedItems / profileCompletionItems.length) * 100);
-  const nextActions = isEmpty
-    ? [{ label: 'Add about us' }, { label: 'Add links' }]
-    : profileCompletionItems.filter((item) => !item.done).slice(0, 2);
   const updateTypes = ['Improvement', 'Bug fix', 'Announcement'] as const;
   const updateCadenceWeeks = [2, 4, 7] as const;
   const whatsNewEngagement = [
