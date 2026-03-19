@@ -5,6 +5,7 @@ import {
   ChevronUp,
   ChevronsUpDown,
   Columns3,
+  Info,
   ListFilter,
   Search,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ export type DatabaseTableFilterOption = {
 export type DatabaseTableColumn<Row> = {
   id: string;
   header: string;
+  headerTooltip?: string;
   accessor: (row: Row) => ReactNode;
   getValue?: (row: Row) => Primitive;
   width?: string;
@@ -30,6 +32,7 @@ export type DatabaseTableColumn<Row> = {
   isSortable?: boolean;
   isDefaultVisible?: boolean;
   isHideable?: boolean;
+  cellClassName?: string;
 };
 
 export type DatabaseTableProps<Row> = {
@@ -420,9 +423,9 @@ export function DatabaseTable<Row>({
   const visibleFilterColumnIds = useMemo(
     () =>
       filterableColumnIds.filter((columnId) =>
-        visibleColumns.some((column) => column.id === columnId)
+        columns.some((column) => column.id === columnId)
       ),
-    [filterableColumnIds, visibleColumns]
+    [filterableColumnIds, columns]
   );
 
   const processedRows = useMemo(() => {
@@ -687,9 +690,9 @@ export function DatabaseTable<Row>({
             ) : null}
           </TooltipIconButton>
           {showFiltersMenu && visibleFilterColumnIds.length > 0 && (
-            <div className="absolute left-0 top-full mt-1 z-20 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
-              <div className="space-y-2">
-                <p className="px-2 pt-1 text-xs font-semibold text-gray-500">Filter by</p>
+            <div className="absolute left-0 top-full mt-1 z-20 w-64 rounded-lg border border-gray-200 bg-white px-1.5 py-1 shadow-lg">
+              <div className="space-y-1">
+                <p className="px-1.5 pt-0.5 pb-0.5 text-xs font-semibold text-gray-500">Filter by</p>
                 {visibleFilterColumnIds.map((columnId) => {
                   const column = columns.find((item) => item.id === columnId);
                   if (!column) return null;
@@ -702,8 +705,8 @@ export function DatabaseTable<Row>({
                     columnId
                   );
                   return (
-                    <div key={columnId}>
-                      <p className="px-2 pt-1 text-2xs font-semibold text-gray-400">{sectionLabel}</p>
+                    <div key={columnId} className="space-y-0.5">
+                      <p className="px-1.5 pt-0.5 text-2xs font-semibold text-gray-400">{sectionLabel}</p>
                       {options.map((option) => (
                         <button
                           key={`${columnId}-${option.value}`}
@@ -714,7 +717,7 @@ export function DatabaseTable<Row>({
                               selectionMode
                             )
                           }
-                          className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-50 ${
+                          className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-gray-50 ${
                             selectedValues.includes(option.value)
                                 ? 'font-medium text-gray-900'
                                 : 'text-gray-600'
@@ -731,79 +734,16 @@ export function DatabaseTable<Row>({
                     </div>
                   );
                 })}
-                <div className="my-1 border-t border-gray-100" />
-                <div className="flex items-center justify-start gap-2 px-1 pb-1">
+                <div className="my-0.5 border-t border-gray-100" />
+                <div className="flex items-center justify-start gap-2 px-0.5 pb-0.5">
                   <button
                     onClick={() => setFilters({})}
-                    className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                    className="rounded px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                   >
                     Clear filters
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        <div ref={columnsMenuRef} className="relative">
-          <TooltipIconButton
-            onClick={() => setShowColumnsMenu((value) => !value)}
-            tooltip="Configure columns"
-            className="btn-secondary inline-flex h-8 w-8 items-center justify-center p-0"
-          >
-            <Columns3 size={12} />
-          </TooltipIconButton>
-          {showColumnsMenu && (
-            <div className="absolute left-0 top-full mt-1 z-20 w-60 rounded-lg border border-gray-200 bg-white p-1.5 shadow-lg">
-              {configurableColumns.length > 0 ? (
-                <>
-                  <p className="px-2 pt-1 text-xs font-semibold text-gray-500">Show columns</p>
-                  {configurableColumns.map((column) => {
-                const checked = visibleColumnIds.includes(column.id);
-                const pinState = pinnedColumns.left.includes(column.id)
-                  ? 'left'
-                  : pinnedColumns.right.includes(column.id)
-                    ? 'right'
-                    : null;
-                return (
-                  <div
-                    key={column.id}
-                    className="flex items-center gap-2 rounded px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-50"
-                  >
-                    <button
-                      onClick={() => toggleColumnVisibility(column.id)}
-                      className="flex flex-1 items-center gap-2 text-left"
-                    >
-                      <span className="w-3">{checked ? <Check size={11} /> : null}</span>
-                      {column.header}
-                    </button>
-                    {enableColumnPinning && <span className="ml-auto text-2xs text-gray-300">{pinState ? 'Pinned' : ''}</span>}
-                  </div>
-                );
-              })}
-                  <div className="mt-1 border-t border-gray-100" />
-                  <div className="pt-1 px-1">
-                    <button
-                      onClick={() => {
-                        if (allConfigurableVisible) {
-                          setVisibleColumnIds((current) =>
-                            current.filter((id) => !configurableColumns.some((column) => column.id === id))
-                          );
-                          return;
-                        }
-                        setVisibleColumnIds((current) => {
-                          const next = new Set(current);
-                          configurableColumns.forEach((column) => next.add(column.id));
-                          return [...next];
-                        });
-                      }}
-                      className="rounded px-1.5 py-1 text-2xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800"
-                    >
-                      {allConfigurableVisible ? 'Hide all columns' : 'Show all columns'}
-                    </button>
-                  </div>
-                </>
-              ) : null}
             </div>
           )}
         </div>
@@ -892,7 +832,7 @@ export function DatabaseTable<Row>({
         </div>
       )}
 
-      <div className={hasSelectionBar ? 'overflow-hidden bg-white mt-0' : 'overflow-hidden bg-white'}>
+      <div className={hasSelectionBar ? 'overflow-visible bg-white mt-0' : 'overflow-visible bg-white'}>
         <table className="w-full table-fixed">
           <thead>
             <tr className="border-b border-gray-200">
@@ -963,7 +903,17 @@ export function DatabaseTable<Row>({
                       column.align === 'right' ? 'ml-auto' : ''
                     }`}
                   >
-                    <span>{column.header}</span>
+                    <span className="inline-flex items-center gap-1">
+                      {column.header}
+                      {column.headerTooltip && (
+                        <span className="group/htt relative inline-flex">
+                          <Info size={12} className="text-gray-400 hover:text-gray-600" />
+                          <span className="pointer-events-none absolute bottom-full left-1/2 mb-1.5 w-56 -translate-x-1/2 rounded bg-gray-900 px-2 py-1.5 text-left text-2xs font-normal leading-snug text-white opacity-0 shadow-lg transition-opacity z-50 group-hover/htt:opacity-100">
+                            {column.headerTooltip}
+                          </span>
+                        </span>
+                      )}
+                    </span>
                     {column.isSortable === false ? null : sort?.columnId === column.id ? (
                       sort.direction === 'asc' ? (
                         <ChevronUp size={11} />
@@ -996,6 +946,61 @@ export function DatabaseTable<Row>({
                   )}
                 </th>
               ))}
+              {configurableColumns.length > 0 && (
+                <th className="relative w-8 px-1 text-right" style={{ position: 'sticky', right: 0, zIndex: 4, background: 'white' }}>
+                  <div ref={columnsMenuRef} className="relative inline-block">
+                  <button
+                    onClick={() => setShowColumnsMenu((v) => !v)}
+                    className="inline-flex items-center justify-center rounded px-1 py-0.5 text-xs text-gray-400 hover:text-gray-700 mt-1.5"
+                    title="Show/hide columns"
+                  >
+                    <Columns3 size={12} />
+                  </button>
+                  {showColumnsMenu && (
+                    <div className="absolute right-0 top-full mt-1 z-30 w-52 rounded-lg border border-gray-200 bg-white py-1.5 shadow-lg">
+                      <p className="px-3 pb-1 pt-0.5 text-left text-xs font-semibold text-gray-500">Show columns</p>
+                      {configurableColumns.map((column) => {
+                        const checked = visibleColumnIds.includes(column.id);
+                        return (
+                          <label
+                            key={column.id}
+                            className="flex cursor-pointer items-center gap-2 px-3 py-0.5 text-xs font-normal text-gray-700 hover:bg-gray-50"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleColumnVisibility(column.id)}
+                              className="h-3 w-3 rounded border-gray-300"
+                            />
+                            {column.header}
+                          </label>
+                        );
+                      })}
+                      <div className="mt-1 border-t border-gray-100 px-2 pt-1 text-left">
+                        <button
+                          onClick={() => {
+                            if (allConfigurableVisible) {
+                              setVisibleColumnIds((current) =>
+                                current.filter((id) => !configurableColumns.some((column) => column.id === id))
+                              );
+                            } else {
+                              setVisibleColumnIds((current) => {
+                                const next = new Set(current);
+                                configurableColumns.forEach((column) => next.add(column.id));
+                                return [...next];
+                              });
+                            }
+                          }}
+                          className="text-2xs text-gray-600 hover:text-gray-800"
+                        >
+                          {allConfigurableVisible ? 'Hide all columns' : 'Show all columns'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  </div>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -1061,7 +1066,7 @@ export function DatabaseTable<Row>({
                           : column.align === 'center'
                             ? 'text-center'
                             : 'text-left'
-                      }`}
+                      }${column.cellClassName ? ` ${column.cellClassName}` : ''}`}
                     >
                       {column.accessor(row)}
                     </td>

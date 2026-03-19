@@ -35,6 +35,8 @@ export interface Team {
   membersCount: number;
   groupsCount: number;
   workspacesCount: number;
+  /** Optional: percentage of members active in last 30 days. Used for status display in tables. */
+  activeUsersPercent?: number;
   memberPreview: MemberPreview[];
   description?: string;
 }

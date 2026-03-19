@@ -775,11 +775,7 @@ export function TeamProfilePage() {
           membersCount={effectiveMembersCount}
           memberPreview={effectiveMemberPreview}
           isMember={team.isMember}
-          isTeamOpen={team.isOpen}
-          isPending={isPending}
           currentUserMembership={team.memberRole}
-          onJoin={handleJoin}
-          onRequestToJoin={() => setShowJoinModal(true)}
           onInvitePeople={() => addToast('Invite flow coming soon', 'info')}
           onAgentPaneOpenChange={setTabAgentPaneOpen}
         />

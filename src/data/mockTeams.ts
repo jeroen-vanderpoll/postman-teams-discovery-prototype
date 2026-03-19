@@ -41,6 +41,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 448,
     groupsCount: 70,
     workspacesCount: 24,
+    activeUsersPercent: 84,
     memberPreview: MEMBERS.slice(0, 9),
   },
   {
@@ -59,6 +60,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 10,
     groupsCount: 0,
     workspacesCount: 8,
+    activeUsersPercent: 92,
     memberPreview: MEMBERS.slice(0, 10),
     description: 'Core workspace infrastructure and tooling team.',
   },
@@ -78,6 +80,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 5,
     groupsCount: 0,
     workspacesCount: 6,
+    activeUsersPercent: 78,
     memberPreview: MEMBERS.slice(1, 4),
     description: 'Working directly with customers on technical integrations.',
   },
@@ -95,6 +98,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 4,
     groupsCount: 0,
     workspacesCount: 5,
+    activeUsersPercent: 65,
     memberPreview: MEMBERS.slice(2, 5),
   },
   {
@@ -111,6 +115,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 4,
     groupsCount: 0,
     workspacesCount: 4,
+    activeUsersPercent: 88,
     memberPreview: MEMBERS.slice(0, 3),
   },
   {
@@ -127,6 +132,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 3,
     groupsCount: 0,
     workspacesCount: 3,
+    activeUsersPercent: 71,
     memberPreview: MEMBERS.slice(3, 6),
   },
   {
@@ -143,6 +149,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 5,
     groupsCount: 0,
     workspacesCount: 7,
+    activeUsersPercent: 56,
     memberPreview: MEMBERS.slice(1, 4),
   },
   {
@@ -159,6 +166,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 11,
     groupsCount: 3,
     workspacesCount: 9,
+    activeUsersPercent: 94,
     memberPreview: MEMBERS.slice(0, 9),
   },
   {
@@ -174,6 +182,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 10,
     groupsCount: 0,
     workspacesCount: 5,
+    activeUsersPercent: 62,
     memberPreview: MEMBERS.slice(0, 10),
   },
   {
@@ -190,6 +199,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 5,
     groupsCount: 0,
     workspacesCount: 4,
+    activeUsersPercent: 80,
     memberPreview: MEMBERS.slice(1, 4),
     description: 'Partner ecosystem integrations and developer relations.',
   },
@@ -206,6 +216,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 3,
     groupsCount: 0,
     workspacesCount: 2,
+    activeUsersPercent: 45,
     memberPreview: MEMBERS.slice(2, 5),
   },
   {
@@ -222,6 +233,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 8,
     groupsCount: 0,
     workspacesCount: 6,
+    activeUsersPercent: 73,
     memberPreview: MEMBERS.slice(3, 6),
     description: 'Internal IDE tooling and platform engineering. Approval required.',
   },
@@ -238,6 +250,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 2,
     groupsCount: 0,
     workspacesCount: 3,
+    activeUsersPercent: 90,
     memberPreview: MEMBERS.slice(0, 3),
   },
   {
@@ -254,6 +267,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 3,
     groupsCount: 0,
     workspacesCount: 4,
+    activeUsersPercent: 38,
     memberPreview: MEMBERS.slice(5, 8),
     description: 'Restricted security testing and compliance. Approval required.',
   },
@@ -271,6 +285,7 @@ export const MOCK_TEAMS: Team[] = [
     membersCount: 6,
     groupsCount: 2,
     workspacesCount: 8,
+    activeUsersPercent: 97,
     memberPreview: MEMBERS.slice(2, 5),
   },
 ];

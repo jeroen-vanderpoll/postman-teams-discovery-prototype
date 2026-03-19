@@ -15,12 +15,15 @@ export function MembersPopover({
   members,
   total,
   groups,
+  status,
   onViewAll,
   triggerClassName,
 }: {
   members: MemberPreview[];
   total: number;
   groups: number;
+  /** Optional status with icon (e.g. { icon: Activity, label: "84%" }). Omit to show count only. */
+  status?: { icon: React.ElementType; label: string; colorClass?: string; bgClass?: string };
   onViewAll: () => void;
   triggerClassName?: string;
 }) {
@@ -52,15 +55,28 @@ export function MembersPopover({
         onClick={(e) => { e.stopPropagation(); setOpen(!open); if (!open) { setSearch(''); setShown(PAGE_SIZE); } }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className={triggerClassName ?? 'flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors'}
+        className={triggerClassName ?? 'inline-flex items-center text-2xs text-gray-700 hover:text-gray-900 transition-colors'}
       >
-        <Users size={11} className="text-gray-500" />
-        <span className="font-medium">{total.toLocaleString()}</span>
+        <span className="inline-flex items-center gap-0.5">
+          <Users size={11} className="text-gray-500 flex-shrink-0" />
+          <span className="font-medium tabular-nums w-[1.75rem] text-left">{total.toLocaleString()}</span>
+        </span>
+        {status ? (
+          (() => {
+            const Icon = status.icon;
+            return (
+              <span className={`inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
+                <Icon size={10} className="flex-shrink-0" />
+                {status.label}
+              </span>
+            );
+          })()
+        ) : null}
       </button>
 
       {hovered && !open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
-          {total.toLocaleString()} users{groups > 0 ? ` · ${groups} groups` : ''}
+          {total.toLocaleString()} users{groups > 0 ? ` · ${groups} groups` : ''}{status ? ` · ${status.label} active` : ''}
         </div>
       )}
 
@@ -121,10 +137,13 @@ export function MembersPopover({
 // ── Workspaces popover ───────────────────────────────────────────────────────
 export function WorkspacesPopover({
   workspaces,
+  status,
   onViewAll,
   triggerClassName,
 }: {
   workspaces: { id: string; name: string; type: WorkspaceType }[];
+  /** Optional status with icon (e.g. { icon: GitBranch, label: "12" }). Omit to show count only. */
+  status?: { icon: React.ElementType; label: string; colorClass?: string; bgClass?: string };
   onViewAll: () => void;
   triggerClassName?: string;
 }) {
@@ -157,15 +176,28 @@ export function WorkspacesPopover({
         onClick={(e) => { e.stopPropagation(); setOpen(!open); if (!open) { setSearch(''); setShown(PAGE_SIZE); } }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className={triggerClassName ?? 'flex items-center gap-1 text-2xs text-gray-700 hover:text-gray-900 transition-colors'}
+        className={triggerClassName ?? 'inline-flex items-center text-2xs text-gray-700 hover:text-gray-900 transition-colors'}
       >
-        <LayoutGrid size={11} className="text-gray-500" />
-        <span className="font-medium">{total}</span>
+        <span className="inline-flex items-center gap-0.5">
+          <LayoutGrid size={11} className="text-gray-500 flex-shrink-0" />
+          <span className="font-medium tabular-nums w-[1.75rem] text-left">{total}</span>
+        </span>
+        {status ? (
+          (() => {
+            const Icon = status.icon;
+            return (
+              <span className={`inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] ${status.bgClass ?? 'bg-gray-100'} ${status.colorClass ?? 'text-gray-400'}`}>
+                <Icon size={10} className="flex-shrink-0" />
+                {status.label}
+              </span>
+            );
+          })()
+        ) : null}
       </button>
 
       {hovered && !open && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-gray-900 text-white text-2xs rounded whitespace-nowrap pointer-events-none z-20">
-          {total} workspaces
+          {total} workspaces{status ? ` · ${status.label} git-connected` : ''}
         </div>
       )}
 

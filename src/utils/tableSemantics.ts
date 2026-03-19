@@ -11,9 +11,14 @@ export const STARRED_OPTIONS: DatabaseTableFilterOption[] = [
 ];
 
 export const TEAMS_MEMBERSHIP_OPTIONS: DatabaseTableFilterOption[] = [
-  { value: 'Member', label: 'Member' },
-  { value: 'Collaborator', label: 'Collaborator' },
-  { value: 'Not a member', label: 'Not a member' },
+  { value: 'Member', label: 'Full access' },
+  { value: 'Collaborator', label: 'Limited access' },
+  { value: '-', label: 'No access' },
+];
+
+export const TEAMS_ROLE_OPTIONS: DatabaseTableFilterOption[] = [
+  { value: 'Manager', label: 'Manager' },
+  { value: 'Developer', label: 'Developer' },
 ];
 
 export const WORKSPACES_ACCESS_OPTIONS: DatabaseTableFilterOption[] = [
@@ -48,7 +53,7 @@ export function parseTeamsSemanticInput(input: string): TableSemanticResult {
   const filters: Record<string, string | string[]> = {};
 
   if (query.includes('teams to join') || query.includes('join team')) {
-    filters.membership = ['Not a member'];
+    filters.membership = ['-'];
   }
   if (query.includes("i'm in") || query.includes('my teams') || query.includes('teams i am in')) {
     filters.membership = ['Member', 'Collaborator'];

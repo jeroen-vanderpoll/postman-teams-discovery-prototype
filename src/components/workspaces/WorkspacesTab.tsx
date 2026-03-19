@@ -337,17 +337,6 @@ export function WorkspacesTab({
               {gridRows.map((workspace) => (
                 <WorkspaceCard key={workspace.id} workspace={workspace} />
               ))}
-              {isMember ? (
-                <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
-                  <p className="text-xs text-gray-600">Need another workspace?</p>
-                  <button
-                    onClick={() => addToast('Create workspace flow coming soon', 'info')}
-                    className="btn-secondary text-2xs px-2 py-1"
-                  >
-                    Create workspace
-                  </button>
-                </div>
-              ) : null}
             </div>
           </>
         )}

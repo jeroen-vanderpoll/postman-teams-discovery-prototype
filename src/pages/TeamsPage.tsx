@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ExternalLink, LayoutGrid, List, Lock, Sparkles, Star } from 'lucide-react';
+import { Activity, ExternalLink, GitBranch, LayoutGrid, List, Lock, Sparkles, Star, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
@@ -18,6 +18,7 @@ import { buildTeamMemberPreviewList } from '../utils/teamMembers';
 import {
   STARRED_OPTIONS,
   TEAMS_MEMBERSHIP_OPTIONS,
+  TEAMS_ROLE_OPTIONS,
   parseTeamsSemanticInput,
 } from '../utils/tableSemantics';
 import type { Team } from '../types';
@@ -34,18 +35,10 @@ export function TeamsPage() {
     () => (sessionStorage.getItem(VIEW_STORAGE_KEY) as ViewMode | null) ?? 'list'
   );
   const [tableState, setTableState] = useState<DatabaseTableState>({});
-  const [tableStateVersion, setTableStateVersion] = useState(0);
+  const [tableStateVersion, setTableStateVersion] = useState(4);
   const [showAgentPane, setShowAgentPane] = useState(false);
   const [agentInput, setAgentInput] = useState('');
   const [joinModalTeam, setJoinModalTeam] = useState<Team | null>(null);
-
-  const getAccessibleWorkspaceCount = (team: Team) =>
-    getAccessibleTeamWorkspaces({
-      workspaces,
-      teamId: team.id,
-      isTeamMember: team.isMember,
-      isTeamOpen: team.isOpen,
-    }).length;
 
   // Persist view preference
   function setViewAndPersist(v: ViewMode) {
@@ -72,22 +65,27 @@ export function TeamsPage() {
 
   const listRows = useMemo(
     () =>
-      teams.map((team) => ({
-        ...team,
-        membershipLabel: team.memberRole === 'member' ? 'Member' : team.memberRole === 'collaborator' ? 'Collaborator' : 'Not a member',
-        accessibleWorkspacesCount: getAccessibleWorkspaceCount(team),
-        accessibleWorkspaces: getAccessibleTeamWorkspaces({
+      teams.map((team, index) => {
+        const accessibleWorkspaces = getAccessibleTeamWorkspaces({
           workspaces,
           teamId: team.id,
           isTeamMember: team.isMember,
           isTeamOpen: team.isOpen,
-        }),
-        teamMembers: buildTeamMemberPreviewList({
-          teamId: team.id,
-          total: team.membersCount,
-          memberPreview: team.memberPreview,
-        }),
-      })),
+        });
+        return {
+          ...team,
+          membershipLabel: team.memberRole === 'member' ? 'Member' : team.memberRole === 'collaborator' ? 'Collaborator' : '-',
+          yourRole: team.isMember ? (index % 7 === 0 ? 'Manager' : 'Developer') : null,
+          accessibleWorkspacesCount: accessibleWorkspaces.length,
+          accessibleWorkspaces,
+          gitConnectedCount: accessibleWorkspaces.filter((w) => w.gitRepo).length,
+          teamMembers: buildTeamMemberPreviewList({
+            teamId: team.id,
+            total: team.membersCount,
+            memberPreview: team.memberPreview,
+          }),
+        };
+      }),
     [teams, workspaces]
   );
   const gridRows = useMemo(() => {
@@ -104,7 +102,7 @@ export function TeamsPage() {
           ? 'Member'
           : team.memberRole === 'collaborator'
             ? 'Collaborator'
-            : 'Not a member';
+            : '-';
       if (search && !`${team.name} ${team.handle} ${membershipLabel}`.toLowerCase().includes(search)) {
         return false;
       }
@@ -120,50 +118,103 @@ export function TeamsPage() {
       header: 'Name',
       accessor: (row) => <TeamNameCell team={row} onOpen={() => window.location.assign(`/teams/${row.id}`)} />,
       getValue: (row) => row.name,
-      width: '40%',
+      width: '220px',
+      cellClassName: 'max-w-[220px] w-[220px]',
+    },
+    {
+      id: 'description',
+      header: 'Description',
+      accessor: (row) => {
+        const text = row.description ?? row.about;
+        if (!text) return <span className="text-gray-300">-</span>;
+        return (
+          <span className="group/desc relative block cursor-default">
+            <span className="block truncate text-xs text-gray-500">{text}</span>
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-64 rounded bg-gray-900 px-2 py-1.5 text-2xs text-white opacity-0 group-hover/desc:opacity-100 transition-opacity z-50 whitespace-normal leading-relaxed shadow-lg">
+              {text}
+            </span>
+          </span>
+        );
+      },
+      getValue: (row) => row.description ?? row.about ?? '',
+      width: '280px',
+      cellClassName: 'max-w-0 w-[280px]',
     },
     {
       id: 'membersCount',
       header: 'Members',
       accessor: (row) => (
-        <div onClick={(event) => event.stopPropagation()}>
+        <div onClick={(event) => event.stopPropagation()} className="inline-flex min-w-0">
           <MembersPopover
             members={row.teamMembers}
             total={row.membersCount}
             groups={row.groupsCount}
+            status={(() => {
+              const pct = row.activeUsersPercent;
+              if (pct == null) return undefined;
+              const colorClass = pct >= 70 ? 'text-green-600/70' : pct >= 40 ? 'text-orange-600/70' : 'text-red-600/70';
+              const bgClass = pct >= 70 ? 'bg-green-500/5' : pct >= 40 ? 'bg-orange-500/5' : 'bg-red-500/5';
+              return { icon: Activity, label: `${pct}%`, colorClass, bgClass };
+            })()}
             onViewAll={() => navigate(`/teams/${row.id}?tab=members`)}
-            triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+            triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
           />
         </div>
       ),
       getValue: (row) => row.membersCount,
-      width: '14%',
+      width: '160px',
     },
     {
       id: 'workspacesCount',
       header: 'Workspaces',
       accessor: (row) => (
-        <div onClick={(event) => event.stopPropagation()}>
+        <div onClick={(event) => event.stopPropagation()} className="inline-flex min-w-0">
           <WorkspacesPopover
             workspaces={row.accessibleWorkspaces.map((workspace) => ({
               id: workspace.id,
               name: workspace.name,
               type: workspace.type,
             }))}
+            status={{ icon: GitBranch, label: String(row.gitConnectedCount), colorClass: row.gitConnectedCount === 0 ? 'text-yellow-600/70' : undefined, bgClass: row.gitConnectedCount === 0 ? 'bg-yellow-500/5' : undefined }}
             onViewAll={() => navigate(`/teams/${row.id}?tab=workspaces`)}
-            triggerClassName="inline-flex items-center gap-1 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+            triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
           />
         </div>
       ),
       getValue: (row) => row.accessibleWorkspacesCount,
-      width: '14%',
+      width: '160px',
+    },
+    {
+      id: 'yourRole',
+      header: 'Your role',
+      accessor: (row) => {
+        if (!row.yourRole) return <span className="text-gray-400">-</span>;
+        const isCollaborator = row.membershipLabel === 'Collaborator';
+        return (
+          <span className="inline-flex items-center gap-1">
+            <span>{row.yourRole}</span>
+            {isCollaborator ? (
+              <span className="group relative inline-flex items-center cursor-default">
+                <span className="inline-flex items-center gap-0.5 font-normal ml-0 rounded px-1 py-px min-h-[18px] bg-gray-100 text-gray-400">
+                  <Eye size={10} className="flex-shrink-0" />
+                </span>
+                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-56 rounded bg-gray-900 px-2 py-1 text-2xs text-white opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-normal">
+                  You only have access to the specific resources you've been invited to.
+                </span>
+              </span>
+            ) : null}
+          </span>
+        );
+      },
+      getValue: (row) => row.yourRole ?? '',
+      width: '140px',
     },
     {
       id: 'membership',
-      header: 'Membership',
-      accessor: (row) => row.membershipLabel,
+      header: 'Access',
+      accessor: () => null,
       getValue: (row) => row.membershipLabel,
-      width: '18%',
+      isDefaultVisible: false,
     },
     {
       id: 'actions',
@@ -186,7 +237,7 @@ export function TeamsPage() {
       ),
       getValue: (row) => row.isStarred,
       align: 'right',
-      width: '12%',
+      width: '60px',
       isHideable: false,
     },
   ];
@@ -241,12 +292,12 @@ export function TeamsPage() {
             rows={listRows}
             columns={tableColumns}
             getRowId={(row) => row.id}
-            defaultVisibleColumnIds={tableColumns.map((column) => column.id)}
-            searchableColumnIds={['name', 'membership']}
-            filterableColumnIds={['membership', 'actions']}
-            filterSelectionModeByColumnId={{ membership: 'multi', actions: 'single' }}
-            filterOptionsByColumnId={{ membership: TEAMS_MEMBERSHIP_OPTIONS, actions: STARRED_OPTIONS }}
-            filterSectionLabelByColumnId={{ membership: 'Membership', actions: 'Starred' }}
+            defaultVisibleColumnIds={tableColumns.filter((c) => c.id !== 'membership').map((c) => c.id)}
+            searchableColumnIds={['name']}
+            filterableColumnIds={['yourRole', 'membership', 'actions']}
+            filterSelectionModeByColumnId={{ yourRole: 'multi', membership: 'multi', actions: 'single' }}
+            filterOptionsByColumnId={{ yourRole: TEAMS_ROLE_OPTIONS, membership: TEAMS_MEMBERSHIP_OPTIONS, actions: STARRED_OPTIONS }}
+            filterSectionLabelByColumnId={{ yourRole: 'Role', membership: 'Access', actions: 'Starred' }}
             initialState={tableState}
             stateVersion={tableStateVersion}
             onStateChange={(state) => setTableState(state)}
@@ -265,7 +316,7 @@ export function TeamsPage() {
             <TableGridControls
               search={tableState.search ?? ''}
               onSearchChange={(value) => setTableState((current) => ({ ...current, search: value }))}
-              filterableColumnIds={['membership', 'actions']}
+              filterableColumnIds={['yourRole', 'membership', 'actions']}
               filters={tableState.filters ?? {}}
               onFilterChange={(columnId, value) =>
                 setTableState((current) => ({
@@ -276,8 +327,8 @@ export function TeamsPage() {
                   },
                 }))
               }
-              filterOptionsByColumnId={{ membership: TEAMS_MEMBERSHIP_OPTIONS, actions: STARRED_OPTIONS }}
-              filterSectionLabelByColumnId={{ membership: 'Membership', actions: 'Starred' }}
+              filterOptionsByColumnId={{ yourRole: TEAMS_ROLE_OPTIONS, membership: TEAMS_MEMBERSHIP_OPTIONS, actions: STARRED_OPTIONS }}
+              filterSectionLabelByColumnId={{ yourRole: 'Role', membership: 'Access', actions: 'Starred' }}
               columns={tableColumns}
               aiControl={askAiControl}
               rightControls={viewToggleControl}
@@ -336,10 +387,10 @@ function TeamNameCell({ team, onOpen }: { team: Team; onOpen: () => void }) {
       <Avatar initials={team.initials} color={team.avatarColor} size="sm" />
       <div className="min-w-0 flex flex-col gap-0.5">
         <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold text-gray-900 truncate hover:underline">{team.name}</span>
+          <span className="text-xs font-semibold text-gray-900 whitespace-nowrap hover:underline">{team.name}</span>
           {!team.isOpen ? <Lock size={10} className="text-gray-400 flex-shrink-0" /> : null}
         </div>
-        <span className="text-2xs text-gray-400 leading-tight">{team.handle}</span>
+        <span className="text-2xs text-gray-400 leading-tight whitespace-nowrap truncate">{team.handle}</span>
       </div>
     </button>
   );

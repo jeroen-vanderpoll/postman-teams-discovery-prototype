@@ -28,11 +28,7 @@ interface MembersTabProps {
   membersCount: number;
   memberPreview: MemberPreview[];
   isMember: boolean;
-  isTeamOpen: boolean;
-  isPending: boolean;
   currentUserMembership: 'member' | 'collaborator' | null;
-  onJoin: () => void;
-  onRequestToJoin: () => void;
   onInvitePeople: () => void;
   onAgentPaneOpenChange?: (open: boolean) => void;
 }
@@ -92,11 +88,7 @@ export function MembersTab({
   membersCount,
   memberPreview,
   isMember,
-  isTeamOpen,
-  isPending,
   currentUserMembership,
-  onJoin,
-  onRequestToJoin,
   onInvitePeople,
   onAgentPaneOpenChange,
 }: MembersTabProps) {
@@ -195,6 +187,7 @@ export function MembersTab({
     {
       id: 'membership',
       header: 'Membership',
+      headerTooltip: 'Members have full access to all team resources. Collaborators have access only to the specific resources they\'ve been invited to.',
       accessor: (row) => row.membership,
       getValue: (row) => row.membership,
       width: '22%',
@@ -337,31 +330,6 @@ export function MembersTab({
                   </div>
                 </div>
               ))}
-              {isMember ? (
-                <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
-                  <p className="text-xs text-gray-600">Grow the crew?</p>
-                  <button className="btn-secondary text-2xs px-2 py-1" onClick={onInvitePeople}>
-                    Invite people
-                  </button>
-                </div>
-              ) : (
-                <div className="card px-3 py-3 flex flex-col justify-between gap-2 border-dashed border-gray-300 bg-gray-50">
-                  <p className="text-xs text-gray-600">Want in on the fun?</p>
-                  {isPending ? (
-                    <button className="btn-secondary text-2xs px-2 py-1 opacity-60" disabled>
-                      Request sent
-                    </button>
-                  ) : isTeamOpen ? (
-                    <button className="btn-secondary text-2xs px-2 py-1" onClick={onJoin}>
-                      Join team
-                    </button>
-                  ) : (
-                    <button className="btn-secondary text-2xs px-2 py-1" onClick={onRequestToJoin}>
-                      Request to join team
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
           </>
         )}

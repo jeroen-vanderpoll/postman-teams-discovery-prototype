@@ -78,17 +78,17 @@ export function TableGridControls({
             ) : null}
           </button>
           {showFiltersMenu ? (
-            <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
-              <div className="space-y-2">
-                <p className="px-2 pt-1 text-xs font-semibold text-gray-500">Filter by</p>
+            <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white px-1.5 py-1 shadow-lg">
+              <div className="space-y-1">
+                <p className="px-1.5 pt-0.5 pb-0.5 text-xs font-semibold text-gray-500">Filter by</p>
                 {filterableColumnIds.map((columnId) => {
                   const column = columns.find((item) => item.id === columnId);
                   if (!column) return null;
                   const options = filterOptionsByColumnId[columnId] ?? [];
                   const selectedValues = Array.isArray(filters[columnId]) ? filters[columnId] : [];
                   return (
-                    <div key={columnId}>
-                      <p className="px-2 pt-1 text-2xs font-semibold text-gray-400">
+                    <div key={columnId} className="space-y-0.5">
+                      <p className="px-1.5 pt-0.5 text-2xs font-semibold text-gray-400">
                         {filterSectionLabelByColumnId?.[columnId] ?? column.header}
                       </p>
                       {options.map((option) => (
@@ -100,7 +100,7 @@ export function TableGridControls({
                               : [...selectedValues, option.value];
                             onFilterChange(columnId, next);
                           }}
-                          className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-gray-50 ${
+                          className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-gray-50 ${
                             selectedValues.includes(option.value)
                               ? 'font-medium text-gray-900'
                               : 'text-gray-600'
@@ -117,13 +117,13 @@ export function TableGridControls({
                     </div>
                   );
                 })}
-                <div className="my-1 border-t border-gray-100" />
-                <div className="flex items-center justify-start gap-2 px-1 pb-1">
+                <div className="my-0.5 border-t border-gray-100" />
+                <div className="flex items-center justify-start gap-2 px-0.5 pb-0.5">
                   <button
                     onClick={() => {
                       filterableColumnIds.forEach((columnId) => onFilterChange(columnId, []));
                     }}
-                    className="rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-800"
+                    className="rounded px-1.5 py-0.5 text-xs text-gray-600 hover:bg-gray-50 hover:text-gray-800"
                   >
                     Clear filters
                   </button>
