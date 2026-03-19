@@ -194,7 +194,7 @@ export function TeamProfilePage() {
     { label: 'Team docs', href: `https://docs.example.com/teams/${teamSlug}` },
   ];
   const focusAreas = isEmpty ? [] : ['Platform reliability', 'Internal tooling', 'Developer collaboration'];
-  const contributorPeople = teamMembers.slice(0, isEmpty ? 1 : 3).map((member, idx) => ({
+  const contributorPeople = teamMembers.slice(0, isEmpty ? 1 : 5).map((member, idx) => ({
     ...member,
     role: idx === 0 ? 'Manager' : null,
   }));
@@ -360,6 +360,97 @@ export function TeamProfilePage() {
                 <p className="text-xs text-gray-400">{team.handle}</p>
               </div>
 
+              {/* Meta row */}
+              <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                {/* Avatar stack + member count */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex items-center">
+                    {contributorPeople.map((person, i) => (
+                      <div key={person.id} className={i > 0 ? '-ml-1.5' : ''} style={{ zIndex: 5 - i }}>
+                        <Avatar initials={person.initials} color={person.avatarColor} size="xs" />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('members')}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    {effectiveMembersCount > 5 ? `+${effectiveMembersCount - 5}` : ''}{' '}
+                    {effectiveMembersCount.toLocaleString()} members
+                  </button>
+                </div>
+
+                {/* Links */}
+                {quickLinks.length > 0 && (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {(linksExpanded ? quickLinks : quickLinks.slice(0, 2)).map((link) => (
+                        <a
+                          key={link.label}
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
+                        >
+                          <Link2 size={11} />
+                          {link.label}
+                        </a>
+                      ))}
+                      {!linksExpanded && quickLinks.length > 2 && (
+                        <button
+                          onClick={() => setLinksExpanded(true)}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          +{quickLinks.length - 2}
+                        </button>
+                      )}
+                      {linksExpanded && quickLinks.length > 2 && (
+                        <button
+                          onClick={() => setLinksExpanded(false)}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          Show less
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* Tags */}
+                {focusAreas.length > 0 && (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {(tagsExpanded ? focusAreas : focusAreas.slice(0, 2)).map((area) => (
+                        <span
+                          key={area}
+                          className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600"
+                        >
+                          {area}
+                        </span>
+                      ))}
+                      {!tagsExpanded && focusAreas.length > 2 && (
+                        <button
+                          onClick={() => setTagsExpanded(true)}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          +{focusAreas.length - 2}
+                        </button>
+                      )}
+                      {tagsExpanded && focusAreas.length > 2 && (
+                        <button
+                          onClick={() => setTagsExpanded(false)}
+                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
+                        >
+                          Show less
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
               {generatedSummary && (
                 <div className="group/summary relative mb-1.5 pr-7">
                   <p className="truncate text-xs text-gray-500">{generatedSummary}</p>
@@ -506,8 +597,8 @@ export function TeamProfilePage() {
           </div>
         ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <section className="group/about lg:col-span-2 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+          <div>
+            <section className="group/about rounded-xl border border-gray-200 bg-white px-4 py-3.5">
               <div className="mb-2 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900">About us</h2>
                 <button
@@ -526,144 +617,6 @@ export function TeamProfilePage() {
                 <p className="text-sm text-gray-700 leading-6">{aboutText}</p>
               )}
             </section>
-
-            <aside className="rounded-xl border border-gray-200 bg-white px-4 py-3.5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-2">Information</h2>
-              <div className="space-y-3">
-                <div className="space-y-2.5">
-                  <p className="text-2xs text-gray-400 mb-1">Contributors</p>
-                  <div className="space-y-1.5">
-                    {contributorPeople.map((person) => (
-                      <div key={person.id} className="flex items-center gap-2">
-                        <Avatar initials={person.initials} color={person.avatarColor} size="xs" />
-                        <p className="text-xs text-gray-700">
-                          {person.name}
-                          {person.role ? <span className="text-gray-400"> • {person.role}</span> : null}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setActiveTab('members')}
-                    className="pt-0.5 text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    View all ({effectiveMembersCount.toLocaleString()})
-                  </button>
-                </div>
-
-                <div className="group/links relative pt-1 pr-7">
-                  <p className="text-2xs text-gray-400 mb-1">Links</p>
-                  <button
-                    aria-label="Edit links"
-                    onClick={() => {}}
-                    className="absolute right-0 top-1 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/links:opacity-100"
-                  >
-                    <Pencil size={10} />
-                  </button>
-                  {quickLinks.length === 0 ? (
-                    <p className="text-xs text-gray-400">No links yet. Add team links.</p>
-                  ) : (
-                    <ul className="flex flex-wrap gap-1.5">
-                      {(linksExpanded ? quickLinks : quickLinks.slice(0, 2)).map((link) => (
-                        <li key={link.label}>
-                          <a
-                            href={link.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900"
-                          >
-                            <Link2 size={11} />
-                            {link.label}
-                          </a>
-                        </li>
-                      ))}
-                      {!linksExpanded && quickLinks.length > 2 && (
-                        <li>
-                          <button
-                            onClick={() => setLinksExpanded(true)}
-                            className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                          >
-                            +{quickLinks.length - 2}
-                          </button>
-                        </li>
-                      )}
-                      {linksExpanded && quickLinks.length > 2 && (
-                        <li>
-                          <button
-                            onClick={() => setLinksExpanded(false)}
-                            className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                          >
-                            Show less
-                          </button>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-                </div>
-
-                <div className="group/tags relative pt-1 pr-7">
-                  <p className="text-2xs text-gray-400 mb-1">Tags</p>
-                  <button
-                    aria-label="Edit tags"
-                    onClick={() => {}}
-                    className="absolute right-0 top-1 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 bg-white text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/tags:opacity-100"
-                  >
-                    <Pencil size={10} />
-                  </button>
-                  {focusAreas.length === 0 ? (
-                    <p className="text-xs text-gray-400">No tags yet. Add tags for discoverability.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {(tagsExpanded ? focusAreas : focusAreas.slice(0, 2)).map((area) => (
-                        <span
-                          key={area}
-                          className="inline-flex rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-600"
-                        >
-                          {area}
-                        </span>
-                      ))}
-                      {!tagsExpanded && focusAreas.length > 2 && (
-                        <button
-                          onClick={() => setTagsExpanded(true)}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                        >
-                          +{focusAreas.length - 2}
-                        </button>
-                      )}
-                      {tagsExpanded && focusAreas.length > 2 && (
-                        <button
-                          onClick={() => setTagsExpanded(false)}
-                          className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2 py-0.5 text-xs text-gray-400 hover:text-gray-600"
-                        >
-                          Show less
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {profileCompletion < 100 && (
-                  <div className="pt-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-medium text-gray-700">Profile completion</p>
-                      <span className="text-2xs text-gray-500">{profileCompletion}%</span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-400 transition-all"
-                        style={{ width: `${profileCompletion}%` }}
-                      />
-                    </div>
-                    {nextActions.length > 0 && (
-                      <p className="mt-1.5 text-2xs text-gray-500">
-                        Next: {nextActions.map((item) => item.label).join(' • ')}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </aside>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
