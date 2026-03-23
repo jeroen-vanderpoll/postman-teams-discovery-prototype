@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Activity, Building2, Eye, LayoutGrid, List, Pencil, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
+import { Building2, Eye, LayoutGrid, List, Pencil, ShieldCheck, Sparkles, Trash2, Users } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { DatabaseTable, type DatabaseTableColumn, type DatabaseTableState } from '../ui/DatabaseTable';
 import { TableAgentPane } from '../ui/TableAgentPane';
@@ -243,26 +243,12 @@ export function MembersTab({
       id: 'workspaces',
       header: 'Workspaces',
       accessor: (row) => {
-        const ratio = row.workspaceAccessCount > 0 ? row.activeWorkspacesCount / row.workspaceAccessCount : 0;
-        const colorClass = ratio >= 0.7 ? 'text-green-600/70' : ratio >= 0.4 ? 'text-orange-600/70' : 'text-red-600/70';
-        const bgClass = ratio >= 0.7 ? 'bg-green-500/5' : ratio >= 0.4 ? 'bg-orange-500/5' : 'bg-red-500/5';
         return (
           <span className="group/ws relative inline-flex items-center gap-1 cursor-default">
             <span className="inline-flex items-center gap-0.5">
               <LayoutGrid size={11} className="text-gray-500 flex-shrink-0" />
               <span className="font-medium w-[1.25rem] text-left tabular-nums">{row.workspaceAccessCount}</span>
             </span>
-            {row.activeWorkspacesCount > 0 ? (
-              <span data-secondary className={`inline-flex items-center gap-0.5 rounded px-1 py-px min-h-[18px] ${bgClass} ${colorClass}`}>
-                <Activity size={10} className="flex-shrink-0" />
-                {row.activeWorkspacesCount}
-              </span>
-            ) : (
-              <span data-secondary className="inline-flex items-center gap-0.5 rounded px-1 py-px min-h-[18px] bg-red-500/5 text-red-600/70">
-                <Activity size={10} className="flex-shrink-0" />
-                0
-              </span>
-            )}
             {(row.adminWorkspacesCount > 0 || row.editorWorkspacesCount > 0) && (
               <span data-secondary className="inline-flex items-center gap-1 rounded px-1 py-px min-h-[18px] bg-gray-100 text-gray-500">
                 {row.adminWorkspacesCount > 0 && (

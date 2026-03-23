@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Activity, ExternalLink, GitBranch, LayoutGrid, List, Lock, Sparkles, Star, Eye } from 'lucide-react';
+import { ExternalLink, GitBranch, LayoutGrid, List, Lock, Sparkles, Star, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumb } from '../components/shell/Breadcrumb';
 import { TeamCard } from '../components/teams/TeamCard';
@@ -149,13 +149,6 @@ export function TeamsPage() {
             members={row.teamMembers}
             total={row.membersCount}
             groups={row.groupsCount}
-            status={(() => {
-              const pct = row.activeUsersPercent;
-              if (pct == null) return undefined;
-              const colorClass = pct >= 70 ? 'text-green-600/70' : pct >= 40 ? 'text-orange-600/70' : 'text-red-600/70';
-              const bgClass = pct >= 70 ? 'bg-green-500/5' : pct >= 40 ? 'bg-orange-500/5' : 'bg-red-500/5';
-              return { icon: Activity, label: `${pct}%`, colorClass, bgClass };
-            })()}
             onViewAll={() => navigate(`/teams/${row.id}?tab=members`)}
             triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
           />

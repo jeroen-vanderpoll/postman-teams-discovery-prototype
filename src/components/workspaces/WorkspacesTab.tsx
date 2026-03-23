@@ -140,17 +140,10 @@ export function WorkspacesTab({
       id: 'contributorsCount',
       header: 'Contributors',
       accessor: (row) => {
-        const pct = row.activeContributorsPercent;
-        const status = pct != null ? {
-          label: `${pct}%`,
-          colorClass: pct >= 70 ? 'text-green-600/70' : pct >= 40 ? 'text-orange-600/70' : 'text-red-600/70',
-          bgClass: pct >= 70 ? 'bg-green-500/5' : pct >= 40 ? 'bg-orange-500/5' : 'bg-red-500/5',
-        } : undefined;
         return (
           <ContributorsPopover
             contributors={row.contributors}
             total={row.contributorsCount}
-            status={status}
             triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
           />
         );
@@ -162,17 +155,10 @@ export function WorkspacesTab({
       id: 'collectionsCount',
       header: 'Collections',
       accessor: (row) => {
-        const pct = row.activeCollectionsPercent;
-        const status = pct != null ? {
-          label: `${pct}%`,
-          colorClass: pct >= 70 ? 'text-green-600/70' : pct >= 40 ? 'text-orange-600/70' : 'text-red-600/70',
-          bgClass: pct >= 70 ? 'bg-green-500/5' : pct >= 40 ? 'bg-orange-500/5' : 'bg-red-500/5',
-        } : undefined;
         return (
           <CollectionsPopover
             collections={row.collections}
             total={row.collectionsCount}
-            status={status}
             triggerClassName="inline-flex items-center gap-0.5 text-xs text-gray-700 hover:text-gray-900 transition-colors cursor-pointer min-w-0"
           />
         );
