@@ -205,6 +205,7 @@ export const MOCK_WORKSPACES: Workspace[] = WORKSPACES_RAW.map((workspace, index
     internalSeenByTeam[workspace.teamId] = (internalSeenByTeam[workspace.teamId] ?? 0) + 1;
   }
 
+  const creatorBase = CONTRIBUTORS[(index * 3 + 2) % CONTRIBUTORS.length];
   return {
     ...workspace,
     yourRole: YOUR_ROLE_CYCLE[index % YOUR_ROLE_CYCLE.length],
@@ -214,5 +215,6 @@ export const MOCK_WORKSPACES: Workspace[] = WORKSPACES_RAW.map((workspace, index
     internalAccess,
     activeContributorsPercent: ACTIVE_PERCENTS[index % ACTIVE_PERCENTS.length],
     activeCollectionsPercent: ACTIVE_PERCENTS[(index + 7) % ACTIVE_PERCENTS.length],
+    creator: { id: creatorBase.id, name: creatorBase.name, initials: creatorBase.initials, avatarColor: creatorBase.avatarColor },
   };
 });

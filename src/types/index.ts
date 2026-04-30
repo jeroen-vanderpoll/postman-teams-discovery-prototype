@@ -47,6 +47,7 @@ export interface Workspace {
   name: string;
   visibility?: 'shared' | 'personal';
   ownerUserId?: string;
+  creator?: MemberPreview;
   collectionsCount: number;
   apisCount: number;
   contributorsCount: number;

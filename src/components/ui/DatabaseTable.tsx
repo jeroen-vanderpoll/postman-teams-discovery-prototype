@@ -36,6 +36,11 @@ export type DatabaseTableColumn<Row> = {
   cellClassName?: string;
 };
 
+export type DatabaseTableFilterRenderer = (opts: {
+  selectedValues: string[];
+  onChange: (values: string[]) => void;
+}) => ReactNode;
+
 export type DatabaseTableProps<Row> = {
   rows: Row[];
   columns: DatabaseTableColumn<Row>[];
@@ -46,6 +51,7 @@ export type DatabaseTableProps<Row> = {
   filterSelectionModeByColumnId?: Record<string, 'single' | 'multi'>;
   filterOptionsByColumnId?: Record<string, DatabaseTableFilterOption[]>;
   filterSectionLabelByColumnId?: Record<string, string>;
+  filterRendererByColumnId?: Record<string, DatabaseTableFilterRenderer>;
   searchPlaceholder?: string;
   emptyStateText?: string;
   persistedStateKey?: string;
@@ -94,6 +100,7 @@ export function DatabaseTable<Row>({
   filterSelectionModeByColumnId,
   filterOptionsByColumnId,
   filterSectionLabelByColumnId,
+  filterRendererByColumnId,
   searchPlaceholder = 'Search rows',
   emptyStateText = 'No results',
   persistedStateKey,
@@ -706,33 +713,40 @@ export function DatabaseTable<Row>({
                     filters,
                     columnId
                   );
+                  const customRenderer = filterRendererByColumnId?.[columnId];
                   return (
                     <div key={columnId} className="space-y-0.5">
                       <p className="px-1.5 pt-0.5 text-2xs font-semibold text-gray-400">{sectionLabel}</p>
-                      {options.map((option) => (
-                        <button
-                          key={`${columnId}-${option.value}`}
-                          onClick={() =>
-                            toggleFilterValue(
-                              columnId,
-                              option.value,
-                              selectionMode
-                            )
-                          }
-                          className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-gray-50 ${
-                            selectedValues.includes(option.value)
-                                ? 'font-medium text-gray-900'
-                                : 'text-gray-600'
-                          }`}
-                        >
-                          <span className="w-3 flex-shrink-0">
-                            {selectedValues.includes(option.value) ? (
-                              <Check size={11} className="text-gray-700" />
-                            ) : null}
-                          </span>
-                          {option.label}
-                        </button>
-                      ))}
+                      {customRenderer
+                        ? customRenderer({
+                            selectedValues,
+                            onChange: (values) =>
+                              setFilters((current) => ({ ...current, [columnId]: values })),
+                          })
+                        : options.map((option) => (
+                            <button
+                              key={`${columnId}-${option.value}`}
+                              onClick={() =>
+                                toggleFilterValue(
+                                  columnId,
+                                  option.value,
+                                  selectionMode
+                                )
+                              }
+                              className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-gray-50 ${
+                                selectedValues.includes(option.value)
+                                    ? 'font-medium text-gray-900'
+                                    : 'text-gray-600'
+                              }`}
+                            >
+                              <span className="w-3 flex-shrink-0">
+                                {selectedValues.includes(option.value) ? (
+                                  <Check size={11} className="text-gray-700" />
+                                ) : null}
+                              </span>
+                              {option.label}
+                            </button>
+                          ))}
                     </div>
                   );
                 })}

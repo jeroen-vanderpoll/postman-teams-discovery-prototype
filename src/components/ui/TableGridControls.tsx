@@ -1,6 +1,6 @@
 import { Check, ListFilter, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { DatabaseTableFilterOption } from './DatabaseTable';
+import type { DatabaseTableFilterOption, DatabaseTableFilterRenderer } from './DatabaseTable';
 
 type TableGridControlsProps = {
   search: string;
@@ -10,6 +10,7 @@ type TableGridControlsProps = {
   onFilterChange: (columnId: string, value: string[]) => void;
   filterOptionsByColumnId: Record<string, DatabaseTableFilterOption[]>;
   filterSectionLabelByColumnId?: Record<string, string>;
+  filterRendererByColumnId?: Record<string, DatabaseTableFilterRenderer>;
   columns: Array<{ id: string; header: string }>;
   aiControl?: ReactNode;
   rightControls?: ReactNode;
@@ -23,6 +24,7 @@ export function TableGridControls({
   onFilterChange,
   filterOptionsByColumnId,
   filterSectionLabelByColumnId,
+  filterRendererByColumnId,
   columns,
   aiControl,
   rightControls,
@@ -86,34 +88,40 @@ export function TableGridControls({
                   if (!column) return null;
                   const options = filterOptionsByColumnId[columnId] ?? [];
                   const selectedValues = Array.isArray(filters[columnId]) ? filters[columnId] : [];
+                  const customRenderer = filterRendererByColumnId?.[columnId];
                   return (
                     <div key={columnId} className="space-y-0.5">
                       <p className="px-1.5 pt-0.5 text-2xs font-semibold text-gray-400">
                         {filterSectionLabelByColumnId?.[columnId] ?? column.header}
                       </p>
-                      {options.map((option) => (
-                        <button
-                          key={`${columnId}-${option.value}`}
-                          onClick={() => {
-                            const next = selectedValues.includes(option.value)
-                              ? selectedValues.filter((value) => value !== option.value)
-                              : [...selectedValues, option.value];
-                            onFilterChange(columnId, next);
-                          }}
-                          className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-gray-50 ${
-                            selectedValues.includes(option.value)
-                              ? 'font-medium text-gray-900'
-                              : 'text-gray-600'
-                          }`}
-                        >
-                          <span className="w-3 flex-shrink-0">
-                            {selectedValues.includes(option.value) ? (
-                              <Check size={11} className="text-gray-700" />
-                            ) : null}
-                          </span>
-                          {option.label}
-                        </button>
-                      ))}
+                      {customRenderer
+                        ? customRenderer({
+                            selectedValues,
+                            onChange: (values) => onFilterChange(columnId, values),
+                          })
+                        : options.map((option) => (
+                            <button
+                              key={`${columnId}-${option.value}`}
+                              onClick={() => {
+                                const next = selectedValues.includes(option.value)
+                                  ? selectedValues.filter((value) => value !== option.value)
+                                  : [...selectedValues, option.value];
+                                onFilterChange(columnId, next);
+                              }}
+                              className={`flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs hover:bg-gray-50 ${
+                                selectedValues.includes(option.value)
+                                  ? 'font-medium text-gray-900'
+                                  : 'text-gray-600'
+                              }`}
+                            >
+                              <span className="w-3 flex-shrink-0">
+                                {selectedValues.includes(option.value) ? (
+                                  <Check size={11} className="text-gray-700" />
+                                ) : null}
+                              </span>
+                              {option.label}
+                            </button>
+                          ))}
                     </div>
                   );
                 })}
